@@ -1,23 +1,30 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as signalR from "@microsoft/signalr";
-import { Player } from "@interfaces/player.interface";
 import { GameRoom } from "@interfaces/gameRoom.interface";
 import { GameState } from "@enums/gameState.enum";
 
-const useKeyboardControls = (
+export default function useKeyboardControls(
   connection: signalR.HubConnection | null,
   gameRoom: GameRoom | null,
   roomId: string,
-  currentPlayerId: string
-) => {
+  currentPlayerId: string,
+) {
+  const gameRoomRef = useRef(gameRoom);
+  const playerIdRef = useRef(currentPlayerId);
+
+  useEffect(() => {
+    gameRoomRef.current = gameRoom;
+    playerIdRef.current = currentPlayerId;
+  }, [gameRoom, currentPlayerId]);
+
   useEffect(() => {
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (!connection || !gameRoom || gameRoom.state !== GameState.Playing)
-        return;
+      const room = gameRoomRef.current;
+      const playerId = playerIdRef.current;
 
-      const currentPlayer = gameRoom.players.find(
-        (p: Player) => p.id === currentPlayerId
-      );
+      if (!connection || !room || room.state !== GameState.Playing) return;
+
+      const currentPlayer = room.players.find((p) => p.id === playerId);
       if (!currentPlayer || !currentPlayer.isAlive) return;
 
       let deltaX = 0;
@@ -55,7 +62,5 @@ const useKeyboardControls = (
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [connection, gameRoom, roomId, currentPlayerId]);
-};
-
-export default useKeyboardControls;
+  }, [connection, roomId]);
+}

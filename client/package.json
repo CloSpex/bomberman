@@ -27,7 +27,7 @@
     "test": "craco test",
     "eject": "react-scripts eject",
     "server": "cd ../server && dotnet run",
-    "dev": "concurrently -k -n REACT,C# -c magenta,cyan \"craco start\" \"cd ../server && dotnet run\""
+    "dev": "concurrently -k -n REACT,C# -c magenta,cyan \"craco start\" \"cd ../server && dotnet watch run\""
   },
   "eslintConfig": {
     "extends": [

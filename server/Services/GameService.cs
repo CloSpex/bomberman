@@ -172,7 +172,10 @@ public class GameService : IGameService
                 updated = true;
             }
 
-            room.Board.Explosions.RemoveAll(e => (now - e.CreatedAt).TotalSeconds >= 1);
+            if (room.Board.Explosions.RemoveAll(e => (now - e.CreatedAt).TotalSeconds >= 1) > 0)
+            {
+                updated = true;
+            }
 
             var alivePlayers = room.Players.Count(p => p.IsAlive);
             if (alivePlayers <= 1)
