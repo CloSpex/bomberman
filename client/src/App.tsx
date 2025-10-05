@@ -1,9 +1,9 @@
-import "./styles/App.css";
-import Game from './features/game/Game';
+// import "./styles/App.css";
+import Game from "./features/game/Game";
 
 function App() {
   return (
-    <div className="App">
+    <div className="App bg-red-400">
       <Game />
     </div>
   );

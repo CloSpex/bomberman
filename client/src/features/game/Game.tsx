@@ -7,7 +7,7 @@ import { GameRoom } from "@interfaces/gameRoom.interface";
 
 export default function BombermanGame() {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(
-    null
+    null,
   );
   const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
   const [playerName, setPlayerName] = useState("");
@@ -133,5 +133,4 @@ export default function BombermanGame() {
       startGame={startGame}
     />
   );
-};
-
+}
