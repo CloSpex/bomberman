@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import * as signalR from "@microsoft/signalr";
-import { GameRoom, GameState } from "./types";
 import LobbyScreen from "./components/LobbyScreen";
 import GameScreen from "./components/GameScreen";
 import LoadingScreen from "./components/LoadingScreen";
+import { GameRoom } from "@interfaces/gameRoom.interface";
 
-const BombermanGame: React.FC = () => {
+export default function BombermanGame() {
   const [connection, setConnection] = useState<signalR.HubConnection | null>(
     null
   );
@@ -135,4 +135,3 @@ const BombermanGame: React.FC = () => {
   );
 };
 
-export default BombermanGame;

@@ -1,12 +1,9 @@
 import React, { useRef, useEffect, useCallback } from "react";
-import {
-  GameRoom,
-  CELL_SIZE,
-  BOARD_WIDTH,
-  BOARD_HEIGHT,
-  CellType,
-  PowerUpType,
-} from "../types";
+
+import { CELL_SIZE, BOARD_WIDTH, BOARD_HEIGHT } from "../types";
+import { GameRoom } from "@interfaces/gameRoom.interface";
+import { CellType } from "@enums/cellType.enum";
+import { PowerUpType } from "@enums/powerUpType.enum";
 
 interface GameCanvasProps {
   gameRoom: GameRoom;

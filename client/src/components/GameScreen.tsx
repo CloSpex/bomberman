@@ -1,6 +1,7 @@
-import React, { useEffect } from "react";
+import React from "react";
 import * as signalR from "@microsoft/signalr";
-import { GameRoom, GameState } from "../types";
+import { GameRoom } from "@interfaces/gameRoom.interface";
+import { GameState } from "@enums/gameState.enum";
 import GameCanvas from "./GameCanvas";
 import PlayersList from "./PlayersList";
 import PlayerStats from "./PlayerStats";

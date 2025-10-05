@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import * as signalR from "@microsoft/signalr";
-import { GameRoom, GameState } from "../types";
+import { Player } from "@interfaces/player.interface";
+import { GameRoom } from "@interfaces/gameRoom.interface";
+import { GameState } from "@enums/gameState.enum";
 
 const useKeyboardControls = (
   connection: signalR.HubConnection | null,
@@ -14,7 +16,7 @@ const useKeyboardControls = (
         return;
 
       const currentPlayer = gameRoom.players.find(
-        (p) => p.id === currentPlayerId
+        (p: Player) => p.id === currentPlayerId
       );
       if (!currentPlayer || !currentPlayer.isAlive) return;
 

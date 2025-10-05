@@ -1,5 +1,5 @@
 import React from "react";
-import { Player } from "../types";
+import { Player } from "@interfaces/player.interface";
 
 interface WinnerModalProps {
   winner: Player | null | undefined;
