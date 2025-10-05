@@ -21,8 +21,9 @@
     "jsx": "react-jsx",
     "baseUrl": "src",
     "paths": {
-      "@interfaces/*": ["interfaces/*"],
-      "@enums/*": ["enums/*"],
+      "@interfaces/*": ["common/interfaces/*"],
+      "@enums/*": ["common/enums/*"],
+      "@sharedComponents/*": ["common/components/*"],
     }
   },
   "include": [

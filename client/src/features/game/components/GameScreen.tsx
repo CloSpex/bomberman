@@ -1,12 +1,13 @@
 import React from "react";
 import * as signalR from "@microsoft/signalr";
+
 import { GameRoom } from "@interfaces/gameRoom.interface";
 import { GameState } from "@enums/gameState.enum";
 import GameCanvas from "./GameCanvas";
 import PlayersList from "./PlayersList";
 import PlayerStats from "./PlayerStats";
 import GameControls from "./GameControls";
-import WinnerModal from "./WinnerModal";
+import WinnerModal from "../modals/WinnerModal";
 import useKeyboardControls from "../hooks/useKeyboardControls";
 
 interface GameScreenProps {

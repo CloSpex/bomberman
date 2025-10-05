@@ -1,4 +1,4 @@
-import { GameState } from "@enums/gameState.enum";
+import { GameState } from "common/enums/gameState.enum";
 import { Player } from "./player.interface";
 import { GameBoard } from "./gameBoard.interface";
 

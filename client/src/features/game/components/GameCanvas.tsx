@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useCallback } from "react";
 
-import { CELL_SIZE, BOARD_WIDTH, BOARD_HEIGHT } from "../types";
+import { CELL_SIZE, BOARD_WIDTH, BOARD_HEIGHT } from "../boardInfo";
 import { GameRoom } from "@interfaces/gameRoom.interface";
 import { CellType } from "@enums/cellType.enum";
 import { PowerUpType } from "@enums/powerUpType.enum";

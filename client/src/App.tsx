@@ -1,10 +1,10 @@
-import './App.css';
-import Game from './Game';
+import "./styles/App.css";
+import Game from './features/game/Game';
 
 function App() {
   return (
     <div className="App">
-      <Game></Game>
+      <Game />
     </div>
   );
 }

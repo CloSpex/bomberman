@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import * as signalR from "@microsoft/signalr";
-import LobbyScreen from "./components/LobbyScreen";
+import LobbyScreen from "../lobby/components/LobbyScreen";
 import GameScreen from "./components/GameScreen";
-import LoadingScreen from "./components/LoadingScreen";
+import LoadingScreen from "@sharedComponents/LoadingScreen";
 import { GameRoom } from "@interfaces/gameRoom.interface";
 
 export default function BombermanGame() {

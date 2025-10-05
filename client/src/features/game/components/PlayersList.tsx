@@ -1,4 +1,5 @@
 import React from "react";
+
 import { Player } from "@interfaces/player.interface";
 
 interface PlayersListProps {

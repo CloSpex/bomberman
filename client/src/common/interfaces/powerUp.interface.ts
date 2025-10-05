@@ -1,4 +1,4 @@
-import { PowerUpType } from "@enums/powerUpType.enum";
+import { PowerUpType } from "common/enums/powerUpType.enum";
 
 export interface PowerUp {
   x: number;
