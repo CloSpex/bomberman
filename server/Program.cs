@@ -3,6 +3,11 @@ using BombermanGame.Events;
 using BombermanGame.Factories;
 using BombermanGame.Hubs;
 using BombermanGame.Services;
+using BombermanGame.Builders;
+using BombermanGame.Prototypes;
+using BombermanGame.Adapters;
+using BombermanGame.Facades;
+using BombermanGame.Bridges;
 using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,11 +26,24 @@ builder.Services.AddCors(options =>
         });
 });
 
-// Register services
 builder.Services.AddSingleton<IGameService, GameService>();
 builder.Services.AddSingleton<IGameFactory, GameFactory>();
 builder.Services.AddSingleton<ICommandHandler, GameCommandHandler>();
 builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
+
+builder.Services.AddSingleton<IGameElementFactory, StandardGameElementFactory>();
+
+builder.Services.AddSingleton<IPlayerBuilder, PlayerBuilder>();
+builder.Services.AddSingleton<IGameRoomBuilder, GameRoomBuilder>();
+
+builder.Services.AddSingleton<PrototypeManager>();
+
+builder.Services.AddSingleton<IGameRoomRepository, InMemoryGameRoomRepository>();
+builder.Services.AddSingleton<IGameDataService, GameRoomAdapter>();
+
+builder.Services.AddSingleton<IGameFacade, GameFacade>();
+
+builder.Services.AddSingleton<IGameRenderer, JsonGameRenderer>();
 
 var app = builder.Build();
 

@@ -13,12 +13,18 @@ public class GameService : IGameService
     private readonly ConcurrentDictionary<string, GameRoom> _rooms = new();
     private readonly Timer _gameTimer;
     private readonly IGameFactory _gameFactory;
+    private readonly IGameElementFactory _elementFactory;
     private readonly IEventPublisher _eventPublisher;
     private readonly IHubContext<GameHub> _hubContext;
 
-    public GameService(IGameFactory gameFactory, IEventPublisher eventPublisher, IHubContext<GameHub> hubContext)
+    public GameService(
+        IGameFactory gameFactory, 
+        IGameElementFactory elementFactory,
+        IEventPublisher eventPublisher, 
+        IHubContext<GameHub> hubContext)
     {
         _gameFactory = gameFactory;
+        _elementFactory = elementFactory;
         _eventPublisher = eventPublisher;
         _hubContext = hubContext;
         _gameTimer = new Timer(UpdateGames, null, TimeSpan.FromMilliseconds(100), TimeSpan.FromMilliseconds(100));
@@ -127,14 +133,7 @@ public class GameService : IGameService
         if (room.Board.Bombs.Any(b => b.X == player.X && b.Y == player.Y))
             return false;
 
-        var bomb = new Bomb
-        {
-            X = player.X,
-            Y = player.Y,
-            PlayerId = playerId,
-            Range = player.BombRange
-        };
-
+        var bomb = _elementFactory.CreateBomb(player.X, player.Y, playerId, player.BombRange);
         room.Board.Bombs.Add(bomb);
 
         await _eventPublisher.PublishAsync(new BombPlacedEvent
@@ -212,7 +211,8 @@ public class GameService : IGameService
                 if (cellType == CellType.Wall)
                     break;
 
-                explosions.Add(new Explosion { X = x, Y = y });
+                var explosion = _elementFactory.CreateExplosion(x, y);
+                explosions.Add(explosion);
 
                 var hitPlayer = room.Players.FirstOrDefault(p => p.X == x && p.Y == y && p.IsAlive);
                 if (hitPlayer != null)
@@ -227,7 +227,8 @@ public class GameService : IGameService
                     if (Random.Shared.NextDouble() < 0.3)
                     {
                         var powerUpType = (PowerUpType)Random.Shared.Next(0, 3);
-                        room.Board.PowerUps.Add(new PowerUp { X = x, Y = y, Type = powerUpType });
+                        var powerUp = _elementFactory.CreatePowerUp(x, y, powerUpType);
+                        room.Board.PowerUps.Add(powerUp);
                     }
 
                     break;
