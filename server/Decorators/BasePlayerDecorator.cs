@@ -28,4 +28,6 @@ public class BasePlayerDecorator : IPlayerDecorator
                 break;
         }
     }
+
+    public Player GetBasePlayer() => _player;
 }

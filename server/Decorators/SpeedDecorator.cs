@@ -17,4 +17,5 @@ public class SpeedDecorator : IPlayerDecorator
     public int GetBombRange() => _decorated.GetBombRange();
     public int GetMovementSpeed() => _decorated.GetMovementSpeed() + _additionalSpeed;
     public void ApplyPowerUp(PowerUpType type) => _decorated.ApplyPowerUp(type);
+    public Player GetBasePlayer() => _decorated.GetBasePlayer();
 }

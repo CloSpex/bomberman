@@ -8,4 +8,5 @@ public interface IPlayerDecorator
     int GetBombRange();
     int GetMovementSpeed();
     void ApplyPowerUp(PowerUpType type);
+    Player GetBasePlayer();
 }

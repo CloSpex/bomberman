@@ -18,4 +18,5 @@ public class BombRangeDecorator : IPlayerDecorator
     public int GetBombRange() => _decorated.GetBombRange() + _additionalRange;
     public int GetMovementSpeed() => _decorated.GetMovementSpeed();
     public void ApplyPowerUp(PowerUpType type) => _decorated.ApplyPowerUp(type);
+    public Player GetBasePlayer() => _decorated.GetBasePlayer();
 }
