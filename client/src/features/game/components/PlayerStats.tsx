@@ -12,6 +12,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ player }) => {
       <div className="space-y-2 text-sm">
         <div>Bombs: {player.bombCount}</div>
         <div>Range: {player.bombRange}</div>
+        <div>Speed: {player.speed}</div>
         <div>Status: {player.isAlive ? "Alive" : "Dead"}</div>
       </div>
     </div>

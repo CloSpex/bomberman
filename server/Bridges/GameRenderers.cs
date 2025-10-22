@@ -2,6 +2,7 @@ using BombermanGame.Models;
 
 namespace BombermanGame.Bridges;
 
+
 public interface IGameRenderer
 {
     string RenderPlayer(Player player);
@@ -73,7 +74,9 @@ public class TextGameRenderer : IGameRenderer
 {
     public string RenderPlayer(Player player)
     {
-        return $"Player {player.Name} at ({player.X},{player.Y}) - {(player.IsAlive ? "Alive" : "Dead")}";
+        var status = player.IsAlive ? "Alive" : "Dead";
+        var color = player.Color;
+        return $"Player {player.Name} [{color}] at ({player.X},{player.Y}) - {status}";
     }
 
     public string RenderBomb(Bomb bomb)
@@ -88,14 +91,86 @@ public class TextGameRenderer : IGameRenderer
 
     public string RenderPowerUp(PowerUp powerUp)
     {
-        return $"PowerUp {powerUp.Type} at ({powerUp.X},{powerUp.Y})";
+        var icon = powerUp.Type switch
+        {
+            PowerUpType.BombUp => "Bomb",
+            PowerUpType.RangeUp => "Range",
+            PowerUpType.SpeedUp => "Speed",
+            _ => "?"
+        };
+        return $"{icon} PowerUp {powerUp.Type} at ({powerUp.X},{powerUp.Y})";
     }
 
     public string RenderGameBoard(GameBoard board)
     {
-        var result = $"Board {GameBoard.Width}x{GameBoard.Height}\n";
-        result += $"Bombs: {board.Bombs.Count}, Explosions: {board.Explosions.Count}, PowerUps: {board.PowerUps.Count}";
+        var result = $"╔══════════════════════════╗\n";
+        result += $"║  Board {GameBoard.Width}x{GameBoard.Height}            ║\n";
+        result += $"╠══════════════════════════╣\n";
+        result += $"║  Bombs: {board.Bombs.Count,-3}            ║\n";
+        result += $"║  Explosions: {board.Explosions.Count,-3}       ║\n";
+        result += $"║  PowerUps: {board.PowerUps.Count,-3}         ║\n";
+        result += $"╚══════════════════════════╝";
         return result;
+    }
+}
+
+public class CanvasGameRenderer : IGameRenderer
+{
+    public string RenderPlayer(Player player)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            player.Id,
+            player.Name,
+            player.X,
+            player.Y,
+            player.IsAlive,
+            player.Color
+        });
+    }
+
+    public string RenderBomb(Bomb bomb)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            bomb.Id,
+            bomb.X,
+            bomb.Y,
+            bomb.PlayerId,
+            bomb.Range
+        });
+    }
+
+    public string RenderExplosion(Explosion explosion)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            explosion.X,
+            explosion.Y
+        });
+    }
+
+    public string RenderPowerUp(PowerUp powerUp)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            powerUp.X,
+            powerUp.Y,
+            Type = powerUp.Type.ToString()
+        });
+    }
+
+    public string RenderGameBoard(GameBoard board)
+    {
+        return System.Text.Json.JsonSerializer.Serialize(new
+        {
+            board.Grid,
+            board.Bombs,
+            board.Explosions,
+            board.PowerUps,
+            Width = GameBoard.Width,
+            Height = GameBoard.Height
+        });
     }
 }
 
@@ -143,6 +218,36 @@ public class BombElement : GameElement
     public override string Render()
     {
         return _renderer.RenderBomb(_bomb);
+    }
+}
+
+public class ExplosionElement : GameElement
+{
+    private readonly Explosion _explosion;
+
+    public ExplosionElement(Explosion explosion, IGameRenderer renderer) : base(renderer)
+    {
+        _explosion = explosion;
+    }
+
+    public override string Render()
+    {
+        return _renderer.RenderExplosion(_explosion);
+    }
+}
+
+public class PowerUpElement : GameElement
+{
+    private readonly PowerUp _powerUp;
+
+    public PowerUpElement(PowerUp powerUp, IGameRenderer renderer) : base(renderer)
+    {
+        _powerUp = powerUp;
+    }
+
+    public override string Render()
+    {
+        return _renderer.RenderPowerUp(_powerUp);
     }
 }
 

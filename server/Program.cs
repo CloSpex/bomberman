@@ -44,8 +44,8 @@ builder.Services.AddSingleton<ICommandHandler, GameCommandHandler>();
 builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
 builder.Services.AddSingleton<GameEventLogger>();
 
-builder.Services.AddSingleton<IPlayerBuilder, PlayerBuilder>();
-builder.Services.AddSingleton<IGameRoomBuilder, GameRoomBuilder>();
+builder.Services.AddTransient<IPlayerBuilder, PlayerBuilder>();
+builder.Services.AddTransient<IGameRoomBuilder, GameRoomBuilder>();
 
 builder.Services.AddSingleton<PrototypeManager>();
 
@@ -59,6 +59,7 @@ builder.Services.AddSingleton<IGameRenderer, JsonGameRenderer>();
 builder.Services.AddSingleton<PlayerDecoratorManager>();
 
 builder.Services.AddSingleton<IGameService, GameService>();
+
 
 var app = builder.Build();
 

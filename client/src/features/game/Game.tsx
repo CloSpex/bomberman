@@ -16,6 +16,7 @@ export default function BombermanGame() {
   const [currentPlayerId, setCurrentPlayerId] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
+  const [rendererType, setRendererType] = useState("canvas");
 
   useEffect(() => {
     const newConnection = new signalR.HubConnectionBuilder()
@@ -33,16 +34,36 @@ export default function BombermanGame() {
           setIsConnected(true);
           console.log("Connected to SignalR hub");
 
-          connection.on("PlayerJoined", (room: GameRoom) => {
-            setGameRoom(room);
+          connection.on("PlayerJoined", (roomData: any) => {
+            console.log("PlayerJoined received:", roomData);
+            setGameRoom(roomData);
+            if (roomData.rendererType) {
+              setRendererType(roomData.rendererType);
+            }
           });
 
-          connection.on("GameStarted", (room: GameRoom) => {
-            setGameRoom(room);
+          connection.on("GameStarted", (roomData: any) => {
+            console.log("GameStarted received:", roomData);
+            setGameRoom(roomData);
+            if (roomData.rendererType) {
+              setRendererType(roomData.rendererType);
+            }
           });
 
-          connection.on("GameUpdated", (room: GameRoom) => {
-            setGameRoom(room);
+          connection.on("GameUpdated", (roomData: any) => {
+            console.log("GameUpdated received:", roomData);
+            setGameRoom(roomData);
+            if (roomData.rendererType) {
+              setRendererType(roomData.rendererType);
+            }
+          });
+
+          connection.on("RendererChanged", (roomData: any) => {
+            console.log("RendererChanged received:", roomData);
+            setGameRoom(roomData);
+            if (roomData.rendererType) {
+              setRendererType(roomData.rendererType);
+            }
           });
 
           connection.on("JoinFailed", (message: string) => {
@@ -105,9 +126,17 @@ export default function BombermanGame() {
     }
   };
 
-  if (!isConnected) {
-    return <LoadingScreen />;
-  }
+  const changeRenderer = async (newRenderer: string) => {
+    if (!connection || !roomId) return;
+    try {
+      console.log(`Requesting renderer change to ${newRenderer}`);
+      await connection.invoke("ChangeRenderer", roomId, newRenderer);
+    } catch (error) {
+      console.error("Error changing renderer:", error);
+    }
+  };
+
+  if (!isConnected) return <LoadingScreen />;
 
   if (!gameRoom) {
     return (
@@ -131,6 +160,8 @@ export default function BombermanGame() {
       roomId={roomId}
       currentPlayerId={currentPlayerId}
       startGame={startGame}
+      rendererType={rendererType}
+      changeRenderer={changeRenderer}
     />
   );
 }

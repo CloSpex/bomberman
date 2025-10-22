@@ -45,15 +45,24 @@ public class GameRoomBuilder : IGameRoomBuilder
 
     public GameRoom Build()
     {
+        var playersCopy = new List<Player>(_players);
+
         var room = new GameRoom
         {
             Id = _id,
             State = _state,
             Board = _board,
-            Players = _players,
+            Players = playersCopy,
             LastUpdate = DateTime.Now
         };
+
         room.UpdateStateHandler();
+
+        _id = Guid.NewGuid().ToString();
+        _state = GameState.Waiting;
+        _board = new GameBoard();
+        _players.Clear();
+
         return room;
     }
 }

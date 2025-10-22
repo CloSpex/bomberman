@@ -7,8 +7,17 @@ public class SpeedUpPowerUp : IPowerUpEffect
 {
     public void ApplyEffect(Player player)
     {
-        player.MovementStrategy = new SpeedBoostMovementStrategy();
+        MovementCooldownTracker.AddSpeedBoost(player.Id);
+
+        if (player.MovementStrategy is not SpeedBoostMovementStrategy)
+        {
+            player.MovementStrategy = new SpeedBoostMovementStrategy();
+        }
     }
 
-    public string GetDescription() => "Increases movement speed";
+    public string GetDescription()
+    {
+        var boostReduction = 20;
+        return $"Decreases movement delay by {boostReduction}ms (stackable)";
+    }
 }

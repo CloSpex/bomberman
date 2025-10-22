@@ -71,7 +71,7 @@ public class PlayerBuilder : IPlayerBuilder
 
     public Player Build()
     {
-        return new Player
+        var player = new Player
         {
             Id = _id,
             Name = _name,
@@ -83,6 +83,17 @@ public class PlayerBuilder : IPlayerBuilder
             MovementStrategy = _movementStrategy,
             IsAlive = true
         };
+
+        _id = "";
+        _name = "";
+        _x = 1;
+        _y = 1;
+        _color = "#ff0000";
+        _bombCount = 1;
+        _bombRange = 2;
+        _movementStrategy = new NormalMovementStrategy();
+
+        return player;
     }
 }
 

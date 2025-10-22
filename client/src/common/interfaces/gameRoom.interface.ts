@@ -8,4 +8,5 @@ export interface GameRoom {
   state: GameState;
   board: GameBoard;
   lastUpdate: string;
+  textView: string;
 }

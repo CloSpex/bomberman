@@ -7,4 +7,5 @@ export interface Player {
   bombCount: number;
   bombRange: number;
   color: string;
+  speed: number;
 }
