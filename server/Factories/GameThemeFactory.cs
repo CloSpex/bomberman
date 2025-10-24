@@ -1,26 +1,17 @@
 using BombermanGame.Models;
 
-namespace BombermanGame.Factories;
+namespace BombermanGame.Factories.AbstractFactory;
 
-public interface IGameElementFactory
+public interface IGameThemeFactory
 {
-    Bomb CreateBomb(int x, int y, string playerId, int range);
     PowerUp CreatePowerUp(int x, int y, PowerUpType type);
     Explosion CreateExplosion(int x, int y);
+    string GetThemeName();
+    string GetThemeColor();
 }
 
-public class StandardGameElementFactory : IGameElementFactory
+public class ClassicThemeFactory : IGameThemeFactory
 {
-    public Bomb CreateBomb(int x, int y, string playerId, int range)
-    {
-        return new Bomb
-        {
-            X = x,
-            Y = y,
-            PlayerId = playerId,
-            Range = range
-        };
-    }
 
     public PowerUp CreatePowerUp(int x, int y, PowerUpType type)
     {
@@ -40,20 +31,13 @@ public class StandardGameElementFactory : IGameElementFactory
             Y = y
         };
     }
+
+    public string GetThemeName() => "Classic";
+    public string GetThemeColor() => "#FF6B00";
 }
 
-public class EnhancedGameElementFactory : IGameElementFactory
+public class NeonThemeFactory : IGameThemeFactory
 {
-    public Bomb CreateBomb(int x, int y, string playerId, int range)
-    {
-        return new Bomb
-        {
-            X = x,
-            Y = y,
-            PlayerId = playerId,
-            Range = range + 1
-        };
-    }
 
     public PowerUp CreatePowerUp(int x, int y, PowerUpType type)
     {
@@ -73,4 +57,7 @@ public class EnhancedGameElementFactory : IGameElementFactory
             Y = y
         };
     }
+
+    public string GetThemeName() => "Neon";
+    public string GetThemeColor() => "#00FFFF";
 }

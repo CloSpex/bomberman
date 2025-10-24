@@ -36,6 +36,12 @@ export default function BombermanGame() {
 
           connection.on("PlayerJoined", (roomData: any) => {
             console.log("PlayerJoined received:", roomData);
+            console.log(
+              "Theme:",
+              roomData.theme,
+              "BombFactory:",
+              roomData.bombFactory,
+            );
             setGameRoom(roomData);
             if (roomData.rendererType) {
               setRendererType(roomData.rendererType);
@@ -44,6 +50,12 @@ export default function BombermanGame() {
 
           connection.on("GameStarted", (roomData: any) => {
             console.log("GameStarted received:", roomData);
+            console.log(
+              "Theme:",
+              roomData.theme,
+              "BombFactory:",
+              roomData.bombFactory,
+            );
             setGameRoom(roomData);
             if (roomData.rendererType) {
               setRendererType(roomData.rendererType);
@@ -52,6 +64,12 @@ export default function BombermanGame() {
 
           connection.on("GameUpdated", (roomData: any) => {
             console.log("GameUpdated received:", roomData);
+            console.log(
+              "Theme:",
+              roomData.theme,
+              "BombFactory:",
+              roomData.bombFactory,
+            );
             setGameRoom(roomData);
             if (roomData.rendererType) {
               setRendererType(roomData.rendererType);
@@ -60,10 +78,38 @@ export default function BombermanGame() {
 
           connection.on("RendererChanged", (roomData: any) => {
             console.log("RendererChanged received:", roomData);
+            console.log(
+              "Theme:",
+              roomData.theme,
+              "BombFactory:",
+              roomData.bombFactory,
+            );
             setGameRoom(roomData);
             if (roomData.rendererType) {
               setRendererType(roomData.rendererType);
             }
+          });
+
+          connection.on("FactoryChanged", (roomData: any) => {
+            console.log("FactoryChanged received:", roomData);
+            console.log(
+              "Theme:",
+              roomData.theme,
+              "BombFactory:",
+              roomData.bombFactory,
+            );
+            setGameRoom(roomData);
+          });
+
+          connection.on("ThemeChanged", (roomData: any) => {
+            console.log("ThemeChanged received:", roomData);
+            console.log(
+              "Theme:",
+              roomData.theme,
+              "BombFactory:",
+              roomData.bombFactory,
+            );
+            setGameRoom(roomData);
           });
 
           connection.on("JoinFailed", (message: string) => {

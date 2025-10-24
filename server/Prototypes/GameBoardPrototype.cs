@@ -1,8 +1,6 @@
 using BombermanGame.Models;
-using BombermanGame.Strategies;
 
 namespace BombermanGame.Prototypes;
-
 
 public class GameBoardPrototype : IPrototype<GameBoard>
 {
@@ -15,38 +13,29 @@ public class GameBoardPrototype : IPrototype<GameBoard>
 
     public GameBoard Clone()
     {
-        var newBoard = new GameBoard
-        {
-            Grid = new int[GameBoard.Height][],
-            Bombs = new List<Bomb>(_template.Bombs.Select(b => new Bomb
-            {
-                Id = b.Id,
-                X = b.X,
-                Y = b.Y,
-                PlayerId = b.PlayerId,
-                PlacedAt = b.PlacedAt,
-                Range = b.Range
-            })),
-            Explosions = new List<Explosion>(_template.Explosions.Select(e => new Explosion
-            {
-                X = e.X,
-                Y = e.Y,
-                CreatedAt = e.CreatedAt
-            })),
-            PowerUps = new List<PowerUp>(_template.PowerUps.Select(p => new PowerUp
-            {
-                X = p.X,
-                Y = p.Y,
-                Type = p.Type
-            }))
-        };
+        var newBoard = new GameBoard();
 
         for (int y = 0; y < GameBoard.Height; y++)
         {
-            newBoard.Grid[y] = new int[GameBoard.Width];
             Array.Copy(_template.Grid[y], newBoard.Grid[y], GameBoard.Width);
         }
 
+        newBoard.Bombs = _template.Bombs.Select(b => b.Clone()).ToList();
+        newBoard.Explosions = _template.Explosions.Select(e => e.Clone()).ToList();
+        newBoard.PowerUps = _template.PowerUps.Select(p => p.Clone()).ToList();
+
+        return newBoard;
+    }
+
+    public GameBoard ShallowClone()
+    {
+        var newBoard = new GameBoard
+        {
+            Grid = _template.Grid,
+            Bombs = _template.Bombs,
+            Explosions = _template.Explosions,
+            PowerUps = _template.PowerUps
+        };
         return newBoard;
     }
 }

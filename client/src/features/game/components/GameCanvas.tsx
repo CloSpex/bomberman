@@ -6,12 +6,52 @@ import { CellType } from "@enums/cellType.enum";
 import { PowerUpType } from "@enums/powerUpType.enum";
 
 interface GameCanvasProps {
-  gameRoom: GameRoom;
+  gameRoom: GameRoom & { theme?: string };
 }
+
+const THEMES = {
+  classic: {
+    background: "#2a2a2a",
+    empty: "#90EE90",
+    wall: "#444444",
+    wallStroke: "#666666",
+    destructible: "#8B4513",
+    destructibleStroke: "#A0522D",
+    explosion: "#FF4500",
+    explosionCenter: "#FFFF00",
+    bomb: "#000000",
+    bombStroke: "#333333",
+    powerUpBomb: "#FFD700",
+    powerUpRange: "#FF69B4",
+    powerUpSpeed: "#00BFFF",
+    powerUpStroke: "#000000",
+  },
+  neon: {
+    background: "#0a0a1a",
+    empty: "#1a1a2e",
+    wall: "#0f3460",
+    wallStroke: "#16213e",
+    destructible: "#533483",
+    destructibleStroke: "#6b4984",
+    explosion: "#00fff5",
+    explosionCenter: "#ff00ff",
+    bomb: "#ff00ff",
+    bombStroke: "#00fff5",
+    powerUpBomb: "#00fff5",
+    powerUpRange: "#ff00ff",
+    powerUpSpeed: "#ffff00",
+    powerUpStroke: "#00fff5",
+  },
+};
 
 const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  const getTheme = () => {
+    const themeName = gameRoom.theme?.toLowerCase() || "classic";
+    return THEMES[themeName as keyof typeof THEMES] || THEMES.classic;
+  };
 
   const renderGame = useCallback(() => {
     const canvas = canvasRef.current;
@@ -20,7 +60,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.fillStyle = "#2a2a2a";
+    const theme = getTheme();
+
+    ctx.fillStyle = theme.background;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     for (let y = 0; y < BOARD_HEIGHT; y++) {
@@ -31,19 +73,19 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
 
         switch (cellType) {
           case CellType.Wall:
-            ctx.fillStyle = "#444444";
+            ctx.fillStyle = theme.wall;
             ctx.fillRect(pixelX, pixelY, CELL_SIZE, CELL_SIZE);
-            ctx.strokeStyle = "#666666";
+            ctx.strokeStyle = theme.wallStroke;
             ctx.strokeRect(pixelX, pixelY, CELL_SIZE, CELL_SIZE);
             break;
           case CellType.DestructibleWall:
-            ctx.fillStyle = "#8B4513";
+            ctx.fillStyle = theme.destructible;
             ctx.fillRect(pixelX, pixelY, CELL_SIZE, CELL_SIZE);
-            ctx.strokeStyle = "#A0522D";
+            ctx.strokeStyle = theme.destructibleStroke;
             ctx.strokeRect(pixelX, pixelY, CELL_SIZE, CELL_SIZE);
             break;
           default:
-            ctx.fillStyle = "#90EE90";
+            ctx.fillStyle = theme.empty;
             ctx.fillRect(pixelX, pixelY, CELL_SIZE, CELL_SIZE);
             break;
         }
@@ -57,12 +99,12 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
 
       ctx.fillStyle =
         powerUp.type === PowerUpType.BombUp
-          ? "#FFD700"
+          ? theme.powerUpBomb
           : powerUp.type === PowerUpType.RangeUp
-          ? "#FF69B4"
-          : "#00BFFF";
+          ? theme.powerUpRange
+          : theme.powerUpSpeed;
       ctx.fillRect(pixelX, pixelY, size, size);
-      ctx.strokeStyle = "#000000";
+      ctx.strokeStyle = theme.powerUpStroke;
       ctx.strokeRect(pixelX, pixelY, size, size);
     });
 
@@ -70,10 +112,10 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
       const pixelX = explosion.x * CELL_SIZE;
       const pixelY = explosion.y * CELL_SIZE;
 
-      ctx.fillStyle = "#FF4500";
+      ctx.fillStyle = theme.explosion;
       ctx.fillRect(pixelX, pixelY, CELL_SIZE, CELL_SIZE);
 
-      ctx.fillStyle = "#FFFF00";
+      ctx.fillStyle = theme.explosionCenter;
       ctx.fillRect(pixelX + 4, pixelY + 4, CELL_SIZE - 8, CELL_SIZE - 8);
     });
 
@@ -82,9 +124,9 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
       const pixelY = bomb.y * CELL_SIZE + 4;
       const size = CELL_SIZE - 8;
 
-      ctx.fillStyle = "#000000";
+      ctx.fillStyle = theme.bomb;
       ctx.fillRect(pixelX, pixelY, size, size);
-      ctx.strokeStyle = "#333333";
+      ctx.strokeStyle = theme.bombStroke;
       ctx.strokeRect(pixelX, pixelY, size, size);
     });
 
@@ -123,7 +165,8 @@ const GameCanvas: React.FC<GameCanvasProps> = ({ gameRoom }) => {
       ref={canvasRef}
       width={BOARD_WIDTH * CELL_SIZE}
       height={BOARD_HEIGHT * CELL_SIZE}
-      className="border border-gray-600 bg-green-200 mx-auto block"
+      className="border border-gray-600 mx-auto block"
+      style={{ backgroundColor: getTheme().background }}
     />
   );
 };

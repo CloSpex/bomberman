@@ -6,10 +6,17 @@ namespace BombermanGame.Singletons;
 
 public sealed class GameConfiguration
 {
-    private static readonly Lazy<GameConfiguration> _instance =
-        new Lazy<GameConfiguration>(() => new GameConfiguration());
+    private static GameConfiguration _instance;
 
-    public static GameConfiguration Instance => _instance.Value;
+    public static GameConfiguration Instance
+    {
+        get
+        {
+            if (_instance == null)
+                _instance = new GameConfiguration();
+            return _instance;
+        }
+    }
 
     public int MaxPlayersPerRoom { get; private set; } = 4;
     public int BombExplosionTimeSeconds { get; private set; } = 3;
@@ -30,23 +37,13 @@ public sealed class GameConfiguration
     private readonly (int X, int Y)[] _spawnPositions = { (1, 1), (13, 1), (1, 11), (13, 11) };
     public (int X, int Y)[] SpawnPositions => _spawnPositions;
 
-    private GameConfiguration()
-    {
-        LoadConfiguration();
-    }
-
-    private void LoadConfiguration()
-    {
-        Console.WriteLine("[Singleton] GameConfiguration initialized with default settings");
-    }
-
     public void UpdateMaxPlayers(int maxPlayers)
     {
         if (maxPlayers < 2 || maxPlayers > 8)
             throw new ArgumentException("Max players must be between 2 and 8");
 
         MaxPlayersPerRoom = maxPlayers;
-        Console.WriteLine($"[Singleton] Max players updated to {maxPlayers}");
+        Console.WriteLine($" Max players updated to {maxPlayers}");
     }
 
     public void UpdateBombExplosionTime(int seconds)
@@ -55,7 +52,7 @@ public sealed class GameConfiguration
             throw new ArgumentException("Bomb explosion time must be between 1 and 10 seconds");
 
         BombExplosionTimeSeconds = seconds;
-        Console.WriteLine($"[Singleton] Bomb explosion time updated to {seconds}s");
+        Console.WriteLine($" Bomb explosion time updated to {seconds}s");
     }
 
     public void UpdatePowerUpDropChance(double chance)
@@ -64,7 +61,7 @@ public sealed class GameConfiguration
             throw new ArgumentException("Drop chance must be between 0 and 1");
 
         PowerUpDropChance = chance;
-        Console.WriteLine($"[Singleton] Power-up drop chance updated to {chance:P0}");
+        Console.WriteLine($" Power-up drop chance updated to {chance:P0}");
     }
 
     public void ResetToDefaults()
@@ -81,7 +78,7 @@ public sealed class GameConfiguration
         BoardHeight = 13;
         DestructibleWallChance = 0.6;
 
-        Console.WriteLine("[Singleton] Configuration reset to defaults");
+        Console.WriteLine("Configuration reset to defaults");
     }
 
     public string GetPlayerColor(int playerIndex)
@@ -100,26 +97,21 @@ public sealed class GameConfiguration
         return _spawnPositions[playerIndex];
     }
 
-    public void PrintConfiguration()
-    {
-        Console.WriteLine("\n=== Game Configuration (Singleton) ===");
-        Console.WriteLine($"Max Players: {MaxPlayersPerRoom}");
-        Console.WriteLine($"Bomb Explosion Time: {BombExplosionTimeSeconds}s");
-        Console.WriteLine($"Power-up Drop Chance: {PowerUpDropChance:P0}");
-        Console.WriteLine($"Board Size: {BoardWidth}x{BoardHeight}");
-        Console.WriteLine($"Default Bomb Count: {DefaultBombCount}");
-        Console.WriteLine($"Default Bomb Range: {DefaultBombRange}");
-        Console.WriteLine($"Game Update Interval: {GameUpdateIntervalMs}ms");
-        Console.WriteLine("=====================================\n");
-    }
 }
 
 public sealed class GameStatistics
 {
-    private static readonly Lazy<GameStatistics> _instance =
-        new Lazy<GameStatistics>(() => new GameStatistics());
+    private static GameStatistics _instance;
 
-    public static GameStatistics Instance => _instance.Value;
+    public static GameStatistics Instance
+    {
+        get
+        {
+            if (_instance == null)
+                _instance = new GameStatistics();
+            return _instance;
+        }
+    }
 
     private readonly ConcurrentDictionary<string, int> _playerWins = new();
     private readonly ConcurrentDictionary<string, int> _playerGamesPlayed = new();
@@ -130,10 +122,6 @@ public sealed class GameStatistics
     private int _totalBombsExploded = 0;
     private DateTime _startTime = DateTime.Now;
 
-    private GameStatistics()
-    {
-        Console.WriteLine("[Singleton] GameStatistics initialized");
-    }
 
     public void RecordGamePlayed(string playerId)
     {
@@ -184,23 +172,6 @@ public sealed class GameStatistics
     public int GetTotalBombsExploded() => _totalBombsExploded;
     public TimeSpan GetUptime() => DateTime.Now - _startTime;
 
-    public void PrintStatistics()
-    {
-        Console.WriteLine("\n=== Game Statistics (Singleton) ===");
-        Console.WriteLine($"Total Games Played: {_totalGames}");
-        Console.WriteLine($"Total Bombs Exploded: {_totalBombsExploded}");
-        Console.WriteLine($"Server Uptime: {GetUptime():hh\\:mm\\:ss}");
-        Console.WriteLine($"Registered Players: {_playerGamesPlayed.Count}");
-
-        if (_playerWins.Any())
-        {
-            var topPlayer = _playerWins.OrderByDescending(x => x.Value).First();
-            Console.WriteLine($"Top Player: {topPlayer.Key} with {topPlayer.Value} wins");
-        }
-
-        Console.WriteLine("===================================\n");
-    }
-
     public void Reset()
     {
         _playerWins.Clear();
@@ -211,16 +182,23 @@ public sealed class GameStatistics
         _totalBombsExploded = 0;
         _startTime = DateTime.Now;
 
-        Console.WriteLine("[Singleton] Statistics reset");
+        Console.WriteLine("Statistics reset");
     }
 }
 
 public sealed class GameLogger
 {
-    private static readonly Lazy<GameLogger> _instance =
-        new Lazy<GameLogger>(() => new GameLogger());
+    private static GameLogger _instance;
 
-    public static GameLogger Instance => _instance.Value;
+    public static GameLogger Instance
+    {
+        get
+        {
+            if (_instance == null)
+                _instance = new GameLogger();
+            return _instance;
+        }
+    }
 
     private readonly ConcurrentQueue<LogEntry> _logQueue = new();
     private readonly int _maxLogEntries = 1000;
@@ -240,12 +218,6 @@ public sealed class GameLogger
         public string Category { get; set; } = "";
         public string Message { get; set; } = "";
     }
-
-    private GameLogger()
-    {
-        Console.WriteLine("[Singleton] GameLogger initialized");
-    }
-
     public void LogDebug(string category, string message)
     {
         Log(LogLevel.Debug, category, message);
@@ -308,6 +280,6 @@ public sealed class GameLogger
     public void ClearLogs()
     {
         _logQueue.Clear();
-        Console.WriteLine("[Singleton] Logs cleared");
+        Console.WriteLine("Logs cleared");
     }
 }

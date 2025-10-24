@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import { GameRoom } from "@interfaces/gameRoom.interface";
 import { GameState } from "@enums/gameState.enum";
@@ -8,9 +8,11 @@ import PlayerStats from "./PlayerStats";
 import GameControls from "./GameControls";
 import WinnerModal from "../modals/WinnerModal";
 import useKeyboardControls from "../hooks/useKeyboardControls";
+import RolePreviewsList from "./RolePreviewsList";
+import { Player } from "@interfaces/player.interface";
 
 interface GameScreenProps {
-  gameRoom: GameRoom;
+  gameRoom: GameRoom & { theme?: string; bombFactory?: string };
   connection: signalR.HubConnection | null;
   roomId: string;
   currentPlayerId: string;
@@ -42,7 +44,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         return "Unknown state";
     }
   };
-
+  const [rolePreviews, setRolePreviews] = useState<Player[]>([]);
   const getCurrentPlayer = () => {
     return gameRoom?.players.find((p) => p.id === currentPlayerId);
   };
@@ -52,6 +54,45 @@ const GameScreen: React.FC<GameScreenProps> = ({
     return gameRoom.players.find((p) => p.isAlive);
   };
 
+  const changeBombFactory = async (factoryType: string) => {
+    if (!connection || !roomId) return;
+    try {
+      await connection.invoke("ChangeBombFactory", roomId, factoryType);
+    } catch (error) {
+      console.error("Error changing bomb factory:", error);
+    }
+  };
+
+  const changeTheme = async (theme: string) => {
+    if (!connection || !roomId) return;
+    try {
+      await connection.invoke("ChangeTheme", roomId, theme);
+    } catch (error) {
+      console.error("Error changing theme:", error);
+    }
+  };
+  const fetchRolePreviews = async () => {
+    if (!connection) return;
+
+    try {
+      await connection.invoke("RolePreviews");
+    } catch (error) {
+      console.error("Failed to fetch role previews:", error);
+    }
+  };
+  useEffect(() => {
+    if (!connection) return;
+
+    const handleRolePreviews = (previews: Player[]) => {
+      setRolePreviews(previews);
+    };
+
+    connection.on("RolePreviews", handleRolePreviews);
+
+    return () => {
+      connection.off("RolePreviews", handleRolePreviews);
+    };
+  }, [connection]);
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4">
       <div className="max-w-6xl mx-auto">
@@ -64,6 +105,38 @@ const GameScreen: React.FC<GameScreenProps> = ({
             {roomId}
           </span>
         </h2>
+
+        <div className="flex justify-center mb-4 space-x-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">
+              Bomb Factory
+            </label>
+            <select
+              onChange={(e) => changeBombFactory(e.target.value)}
+              value={
+                gameRoom.bombFactory?.includes("Enhanced")
+                  ? "enhanced"
+                  : "standard"
+              }
+              className="px-4 py-2 bg-gray-700 rounded border border-gray-600 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="standard">Standard Bombs</option>
+              <option value="enhanced">Enhanced Bombs (+1 range)</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Theme</label>
+            <select
+              onChange={(e) => changeTheme(e.target.value)}
+              value={gameRoom.theme?.toLowerCase() || "classic"}
+              className="px-4 py-2 bg-gray-700 rounded border border-gray-600 focus:border-orange-500 focus:outline-none"
+            >
+              <option value="classic">Classic Theme</option>
+              <option value="neon">Neon Theme</option>
+            </select>
+          </div>
+        </div>
 
         <div className="flex justify-center mb-4 space-x-2">
           {["canvas", "json", "text"].map((type) => (
@@ -131,6 +204,17 @@ const GameScreen: React.FC<GameScreenProps> = ({
           </div>
 
           <div className="space-y-4">
+            <div className="mt-4">
+              <button
+                onClick={fetchRolePreviews}
+                className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded"
+              >
+                Load Role Previews
+              </button>
+
+              <RolePreviewsList previews={rolePreviews} />
+            </div>
+
             <PlayersList
               players={gameRoom.players}
               currentPlayerId={currentPlayerId}

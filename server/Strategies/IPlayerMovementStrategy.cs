@@ -7,7 +7,6 @@ public interface IPlayerMovementStrategy
 {
     bool CanMove(GameBoard board, int x, int y);
     bool CanMoveNow(string playerId);
-    int GetMovementCooldownMs();
     int GetBaseMovementCooldownMs();
 }
 public static class MovementCooldownTracker
@@ -84,10 +83,6 @@ public class NormalMovementStrategy : IPlayerMovementStrategy
         return MovementCooldownTracker.CanMoveNow(playerId, BASE_MOVEMENT_COOLDOWN_MS);
     }
 
-    public int GetMovementCooldownMs()
-    {
-        return BASE_MOVEMENT_COOLDOWN_MS;
-    }
 
     public int GetBaseMovementCooldownMs() => BASE_MOVEMENT_COOLDOWN_MS;
 }
@@ -113,10 +108,6 @@ public class SpeedBoostMovementStrategy : IPlayerMovementStrategy
         return MovementCooldownTracker.CanMoveNow(playerId, BASE_MOVEMENT_COOLDOWN_MS);
     }
 
-    public int GetMovementCooldownMs()
-    {
-        return BASE_MOVEMENT_COOLDOWN_MS;
-    }
 
     public int GetBaseMovementCooldownMs() => BASE_MOVEMENT_COOLDOWN_MS;
 }
@@ -140,11 +131,6 @@ public class SlowMovementStrategy : IPlayerMovementStrategy
     public bool CanMoveNow(string playerId)
     {
         return MovementCooldownTracker.CanMoveNow(playerId, BASE_MOVEMENT_COOLDOWN_MS);
-    }
-
-    public int GetMovementCooldownMs()
-    {
-        return BASE_MOVEMENT_COOLDOWN_MS;
     }
 
     public int GetBaseMovementCooldownMs() => BASE_MOVEMENT_COOLDOWN_MS;

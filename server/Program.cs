@@ -37,7 +37,6 @@ config.UpdatePowerUpDropChance(0.3);
 logger.LogInfo("Startup", "Game configuration loaded");
 
 builder.Services.AddSingleton<IGameFactory, GameFactory>();
-builder.Services.AddSingleton<IGameElementFactory, StandardGameElementFactory>();
 
 builder.Services.AddSingleton<ICommandHandler, GameCommandHandler>();
 
@@ -74,8 +73,6 @@ app.UseRouting();
 app.MapControllers();
 app.MapHub<GameHub>("/gamehub");
 
-
-statistics.PrintStatistics();
 
 logger.LogInfo("Startup", "All systems operational - Server ready!");
 

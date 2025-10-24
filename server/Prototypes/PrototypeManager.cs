@@ -1,5 +1,7 @@
 using BombermanGame.Models;
+
 namespace BombermanGame.Prototypes;
+
 public class PrototypeManager
 {
     private readonly Dictionary<string, IPrototype<Player>> _playerPrototypes = new();
@@ -23,5 +25,21 @@ public class PrototypeManager
     public GameBoard? CreateBoardFromPrototype(string key)
     {
         return _boardPrototypes.TryGetValue(key, out var prototype) ? prototype.Clone() : null;
+    }
+    public Player? CreatePlayerPreview(string key)
+    {
+        return _playerPrototypes.TryGetValue(key, out var prototype) ? prototype.ShallowClone() : null;
+    }
+
+    public GameBoard? CreateBoardSnapshot(string key)
+    {
+        return _boardPrototypes.TryGetValue(key, out var prototype) ? prototype.ShallowClone() : null;
+    }
+
+    public List<Player> CreateAllPlayerPreviews()
+    {
+        return _playerPrototypes.Values
+            .Select(p => p.ShallowClone())
+            .ToList();
     }
 }

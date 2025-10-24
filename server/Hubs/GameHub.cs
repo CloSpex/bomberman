@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
 using BombermanGame.Services;
-using BombermanGame.Commands;
-using BombermanGame.Factories;
 using BombermanGame.Facades;
 using BombermanGame.Bridges;
 using BombermanGame.Singletons;
@@ -53,6 +51,57 @@ public class GameHub : Hub
         {
             _logger.LogError("Hub", $"Error in JoinRoom: {ex.Message}");
             await Clients.Caller.SendAsync("JoinFailed", "An error occurred while joining the room");
+        }
+    }
+    public async Task RolePreviews()
+    {
+        try
+        {
+            var previews = _gameService.GetPlayerRolePreviews();
+            await Clients.Caller.SendAsync("RolePreviews", previews);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Hub", $"Error in RolePreviews: {ex.Message}");
+        }
+    }
+    public async Task ChangeBombFactory(string roomId, string factoryType)
+    {
+        try
+        {
+            _gameService.SetRoomBombFactory(roomId, factoryType);
+            _logger.LogInfo("Hub", $"Bomb factory changed to {factoryType} for room {roomId}");
+
+            var room = _gameService.GetRoom(roomId);
+            if (room != null)
+            {
+                var roomResponse = CreateRoomResponse(roomId, room);
+                await Clients.Group(roomId).SendAsync("FactoryChanged", roomResponse);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Hub", $"Error in ChangeBombFactory: {ex.Message}");
+        }
+    }
+
+    public async Task ChangeTheme(string roomId, string theme)
+    {
+        try
+        {
+            _gameService.SetRoomTheme(roomId, theme);
+            _logger.LogInfo("Hub", $"Theme changed to {theme} for room {roomId}");
+
+            var room = _gameService.GetRoom(roomId);
+            if (room != null)
+            {
+                var roomResponse = CreateRoomResponse(roomId, room);
+                await Clients.Group(roomId).SendAsync("ThemeChanged", roomResponse);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Hub", $"Error in ChangeTheme: {ex.Message}");
         }
     }
 
@@ -202,7 +251,7 @@ public class GameHub : Hub
                 "json" => new JsonGameRenderer(),
                 "text" => new TextGameRenderer(),
                 "canvas" => new CanvasGameRenderer(),
-                _ => new JsonGameRenderer()
+                _ => new CanvasGameRenderer()
             };
 
             _gameService.SetRoomRenderer(roomId, renderer);
@@ -224,6 +273,8 @@ public class GameHub : Hub
     private object CreateRoomResponse(string roomId, GameRoom room)
     {
         var renderer = _gameService.GetRoomRenderer(roomId);
+        var theme = _gameService.GetRoomTheme(roomId);
+        var bombFactoryType = _gameService.GetRoomBombFactoryType(roomId);
 
         if (renderer is TextGameRenderer)
         {
@@ -254,7 +305,9 @@ public class GameHub : Hub
                 room.Board,
                 room.State,
                 TextView = textView,
-                RendererType = "text"
+                RendererType = "text",
+                Theme = theme,
+                BombFactory = bombFactoryType
             };
         }
 
@@ -264,7 +317,9 @@ public class GameHub : Hub
             room.Players,
             room.Board,
             room.State,
-            RendererType = renderer?.GetType().Name.Replace("GameRenderer", "").ToLower() ?? "json"
+            RendererType = renderer?.GetType().Name.Replace("GameRenderer", "").ToLower() ?? "json",
+            Theme = theme,
+            BombFactory = bombFactoryType
         };
     }
 }
