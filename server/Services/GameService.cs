@@ -33,12 +33,9 @@ public class GameService : IGameService
     private readonly IGameRoomBuilder _gameRoomBuilder;
     private readonly GameEventSubject _gameEventSubject;
     private readonly GameEventLoggerObserver _loggerObserver;
-    private readonly GameStatisticsObserver _statisticsObserver;
-    private readonly AchievementObserver _achievementObserver;
     private readonly SignalRNotificationObserver _notificationObserver;
 
     private readonly GameConfiguration _config = GameConfiguration.Instance;
-    private readonly GameStatistics _statistics = GameStatistics.Instance;
     private readonly GameLogger _logger = GameLogger.Instance;
 
     public GameService(
@@ -59,13 +56,9 @@ public class GameService : IGameService
         _gameEventSubject = new GameEventSubject();
 
         _loggerObserver = new GameEventLoggerObserver(_logger);
-        _statisticsObserver = new GameStatisticsObserver(_statistics, _logger);
-        _achievementObserver = new AchievementObserver(_logger);
         _notificationObserver = new SignalRNotificationObserver(_hubContext);
 
         _gameEventSubject.Attach(_loggerObserver);
-        _gameEventSubject.Attach(_statisticsObserver);
-        _gameEventSubject.Attach(_achievementObserver);
         _gameEventSubject.Attach(_notificationObserver);
 
         _logger.LogInfo("Observer", "All observers attached successfully");
@@ -440,7 +433,6 @@ public class GameService : IGameService
                 if (alivePlayers.Count == 1)
                 {
                     var winner = alivePlayers[0];
-                    _statistics.RecordWin(winner.Id);
                     _logger.LogInfo("Game", $"Player {winner.Name} won in room {room.Id}");
                 }
 
@@ -484,12 +476,6 @@ public class GameService : IGameService
                 if (hitPlayer != null)
                 {
                     hitPlayer.IsAlive = false;
-
-                    var killer = room.Players.FirstOrDefault(p => p.Id == bomb.PlayerId);
-                    if (killer != null && killer.Id != hitPlayer.Id)
-                    {
-                        _statistics.RecordKill(killer.Id);
-                    }
 
                     _logger.LogInfo("Game", $"Player {hitPlayer.Name} was eliminated");
                 }

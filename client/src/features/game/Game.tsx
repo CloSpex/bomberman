@@ -15,11 +15,9 @@ const normalizeGameRoom = (data: any): GameRoom | null => {
   console.log("Normalizing room data:", data);
 
   try {
-    // Parse state - handle both string and numeric values
     let parsedState = GameState.Waiting;
     const stateValue = data.state || data.State;
     if (typeof stateValue === "string") {
-      // Convert string to enum
       parsedState =
         GameState[stateValue as keyof typeof GameState] ?? GameState.Waiting;
     } else if (typeof stateValue === "number") {
