@@ -85,6 +85,16 @@ public class GameService : IGameService
             .Build();
         _prototypeManager.RegisterPlayerPrototype("speed", speedPlayer);
 
+        var superFastPlayer = _playerBuilder
+            .WithName("SuperFast")
+            .WithPosition(1, 1)
+            .WithBombCount(_config.DefaultBombCount)
+            .WithBombRange(_config.DefaultBombRange)
+            .WithMovementStrategy(new SuperFastMovementStrategy())
+            .WithColor("#ff00bbff")
+            .Build();
+        _prototypeManager.RegisterPlayerPrototype("superFast", superFastPlayer);
+
         var bomberPlayer = _playerBuilder
             .WithName("Bomber")
             .WithPosition(1, 1)
@@ -162,7 +172,6 @@ public class GameService : IGameService
             "enhanced" => new EnhancedBombFactory(),
             _ => new StandardBombFactory()
         };
-
     }
 
     public void SetRoomTheme(string roomId, string theme)
@@ -196,7 +205,7 @@ public class GameService : IGameService
             return false;
         }
 
-        string[] roles = { "power", "speed", "bomber", "balanced" };
+        string[] roles = { "power", "speed", "superFast", "bomber", "balanced" };
         var roleIndex = playerCount % roles.Length;
         var prototypeKey = roles[roleIndex];
 
@@ -331,6 +340,19 @@ public class GameService : IGameService
 
                     _logger.LogInfo("PowerUp", $"Player {player.Name} collected SpeedUp (x{boostCount}) - Delay: {effectiveCooldown}ms");
                     break;
+                case PowerUpType.SuperFast:
+                    decoratorManager.ApplySpeedUpgrade(playerId);
+                    player.MovementStrategy = new SuperFastMovementStrategy();
+                    MovementCooldownTracker.AddSpeedBoost(playerId);
+
+                    boostCount = MovementCooldownTracker.GetSpeedBoostCount(playerId);
+                    effectiveCooldown = MovementCooldownTracker.GetEffectiveCooldown(
+                        playerId,
+                        player.MovementStrategy.GetBaseMovementCooldownMs()
+                    );
+
+                    _logger.LogInfo("PowerUp", $"Player {player.Name} collected SpeedUp (x{boostCount}) - Delay: {effectiveCooldown}ms");
+                    break;
             }
         }
     }
@@ -338,7 +360,7 @@ public class GameService : IGameService
     public List<Player> GetPlayerRolePreviews()
     {
 
-        string[] roles = { "power", "speed", "bomber", "balanced" };
+        string[] roles = { "power", "speed", "superFast", "bomber", "balanced" };
         var previews = new List<Player>();
 
         foreach (var role in roles)

@@ -11,6 +11,7 @@ public class PowerUpFactory
             PowerUpType.BombUp => new BombUpPowerUp(),
             PowerUpType.RangeUp => new RangeUpPowerUp(),
             PowerUpType.SpeedUp => new SpeedUpPowerUp(),
+            PowerUpType.SuperFast => new SuperFastPowerUp(),
             _ => throw new ArgumentException("Invalid power-up type")
         };
     }

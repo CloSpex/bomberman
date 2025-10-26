@@ -96,6 +96,7 @@ public class TextGameRenderer : IGameRenderer
             PowerUpType.BombUp => "Bomb",
             PowerUpType.RangeUp => "Range",
             PowerUpType.SpeedUp => "Speed",
+            PowerUpType.SuperFast => "SuperFast",
             _ => "?"
         };
         return $"{icon} PowerUp {powerUp.Type} at ({powerUp.X},{powerUp.Y})";

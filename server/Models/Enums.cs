@@ -18,5 +18,6 @@ public enum PowerUpType
 {
     BombUp,
     RangeUp,
-    SpeedUp
+    SpeedUp,
+    SuperFast,
 }

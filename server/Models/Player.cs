@@ -49,6 +49,7 @@ public class Player : ICloneable
             NormalMovementStrategy => new NormalMovementStrategy(),
             SpeedBoostMovementStrategy => new SpeedBoostMovementStrategy(),
             SlowMovementStrategy => new SlowMovementStrategy(),
+            SuperFastMovementStrategy => new SuperFastMovementStrategy(),
             _ => new NormalMovementStrategy()
         };
 

@@ -135,3 +135,27 @@ public class SlowMovementStrategy : IPlayerMovementStrategy
 
     public int GetBaseMovementCooldownMs() => BASE_MOVEMENT_COOLDOWN_MS;
 }
+
+public class SuperFastMovementStrategy : IPlayerMovementStrategy
+{
+    private const int BASE_MOVEMENT_COOLDOWN_MS = 100;
+
+    public bool CanMove(GameBoard board, int x, int y)
+    {
+        if (x < 0 || x >= GameBoard.Width || y < 0 || y >= GameBoard.Height)
+            return false;
+
+        var cellType = (CellType)board.Grid[y][x];
+        if (cellType == CellType.Wall || cellType == CellType.DestructibleWall)
+            return false;
+
+        return !board.Bombs.Any(b => b.X == x && b.Y == y);
+    }
+
+    public bool CanMoveNow(string playerId)
+    {
+        return MovementCooldownTracker.CanMoveNow(playerId, BASE_MOVEMENT_COOLDOWN_MS);
+    }
+
+    public int GetBaseMovementCooldownMs() => BASE_MOVEMENT_COOLDOWN_MS;
+}
