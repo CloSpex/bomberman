@@ -4,19 +4,24 @@ namespace BombermanGame.Factories.FactoryMethod;
 
 public abstract class BombFactory
 {
-    public abstract Bomb CreateBomb(int x, int y, string playerId, int range);
-
-    public Bomb CreateAndLogBomb(int x, int y, string playerId, int range)
+    public Bomb CreateAndConfigureBomb(int x, int y, string playerId, int range)
     {
         var bomb = CreateBomb(x, y, playerId, range);
-        Console.WriteLine($"[Factory Method] Created {bomb.GetType().Name} at ({x}, {y})");
+        LogBombCreation(bomb);
         return bomb;
+    }
+
+    protected abstract Bomb CreateBomb(int x, int y, string playerId, int range);
+
+    protected virtual void LogBombCreation(Bomb bomb)
+    {
+        Console.WriteLine($"[{GetType().Name}] Created bomb at ({bomb.X}, {bomb.Y}) with range {bomb.Range}");
     }
 }
 
 public class StandardBombFactory : BombFactory
 {
-    public override Bomb CreateBomb(int x, int y, string playerId, int range)
+    protected override Bomb CreateBomb(int x, int y, string playerId, int range)
     {
         return new Bomb
         {
@@ -30,7 +35,7 @@ public class StandardBombFactory : BombFactory
 
 public class EnhancedBombFactory : BombFactory
 {
-    public override Bomb CreateBomb(int x, int y, string playerId, int range)
+    protected override Bomb CreateBomb(int x, int y, string playerId, int range)
     {
         return new Bomb
         {

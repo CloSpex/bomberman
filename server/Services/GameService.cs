@@ -13,6 +13,7 @@ using BombermanGame.Strategies;
 using BombermanGame.Adapters;
 using BombermanGame.Bridges;
 using BombermanGame.Builders;
+using BombermanGame.PowerUps;
 
 namespace BombermanGame.Services;
 
@@ -21,11 +22,8 @@ public class GameService : IGameService
     private readonly ConcurrentDictionary<string, GameRoom> _rooms = new();
     private readonly Dictionary<string, PlayerDecoratorManager> _roomDecorators = new();
     private readonly Dictionary<string, IGameRenderer> _roomRenderers = new();
-    private readonly Dictionary<string, BombFactory> _roomBombFactories = new();
-    private readonly Dictionary<string, IGameThemeFactory> _roomThemeFactories = new();
-
+    private readonly Dictionary<string, IGameModeFactory> _roomModeFactories = new();
     private readonly Timer _gameTimer;
-    private readonly IGameFactory _gameFactory;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly PrototypeManager _prototypeManager;
     private readonly IGameDataService _gameDataService;
@@ -39,14 +37,12 @@ public class GameService : IGameService
     private readonly GameLogger _logger = GameLogger.Instance;
 
     public GameService(
-        IGameFactory gameFactory,
         IHubContext<GameHub> hubContext,
         PrototypeManager prototypeManager,
         IGameDataService gameDataService,
         IPlayerBuilder playerBuilder,
         IGameRoomBuilder gameRoomBuilder)
     {
-        _gameFactory = gameFactory;
         _hubContext = hubContext;
         _prototypeManager = prototypeManager;
         _gameDataService = gameDataService;
@@ -54,7 +50,6 @@ public class GameService : IGameService
         _gameRoomBuilder = gameRoomBuilder;
 
         _gameEventSubject = new GameEventSubject();
-
         _loggerObserver = new GameEventLoggerObserver(_logger);
         _notificationObserver = new SignalRNotificationObserver(_hubContext);
 
@@ -119,8 +114,11 @@ public class GameService : IGameService
         _prototypeManager.RegisterBoardPrototype("standard", standardBoard);
     }
 
-    public GameRoom CreateRoom(string roomId, string theme = "classic")
+    public GameRoom CreateRoom(string roomId, string gameMode = "standard")
     {
+        var modeFactory = CreateGameModeFactory(gameMode);
+        _roomModeFactories[roomId] = modeFactory;
+
         var room = _gameRoomBuilder
             .WithId(roomId)
             .WithState(GameState.Waiting)
@@ -130,39 +128,49 @@ public class GameService : IGameService
         _rooms.TryAdd(roomId, room);
         _roomDecorators[roomId] = new PlayerDecoratorManager();
         _roomRenderers[roomId] = new JsonGameRenderer();
-        _roomBombFactories[roomId] = new StandardBombFactory();
-        _roomThemeFactories[roomId] = CreateThemeFactory(theme);
+
+        var modeName = modeFactory.GetModeName();
+        var modeDescription = modeFactory.GetModeDescription();
+        var dropRate = modeFactory.GetPowerUpDropRate();
+
+        _logger.LogInfo("Room", $"Created room {roomId} with {modeName} mode - {modeDescription}");
+        _logger.LogInfo("Factory", $"Mode settings: PowerUp drop rate = {dropRate:P0}");
 
         return room;
     }
 
-    private IGameThemeFactory CreateThemeFactory(string theme)
+    private IGameModeFactory CreateGameModeFactory(string gameMode)
     {
-        return theme.ToLower() switch
+        var factory = (IGameModeFactory)(gameMode.ToLower() switch
         {
-            "neon" => new NeonThemeFactory(),
-            _ => new ClassicThemeFactory()
-        };
+            "standard" => new StandardModeFactory(),
+            "chaos" => new ChaosModeFactory(),
+            "speed" => new SpeedModeFactory(),
+            _ => new StandardModeFactory()
+        });
+
+        _logger.LogInfo("Factory", $"Created {factory.GetModeName()} factory with {factory.GetPowerUpDropRate():P0} drop rate");
+        return factory;
     }
 
-    public void SetRoomBombFactory(string roomId, string factoryType)
+    public void SetRoomGameMode(string roomId, string gameMode)
     {
-        if (!_roomBombFactories.ContainsKey(roomId))
-            return;
-
-        _roomBombFactories[roomId] = factoryType.ToLower() switch
+        if (!_roomModeFactories.ContainsKey(roomId))
         {
-            "enhanced" => new EnhancedBombFactory(),
-            _ => new StandardBombFactory()
-        };
-    }
-
-    public void SetRoomTheme(string roomId, string theme)
-    {
-        if (!_roomThemeFactories.ContainsKey(roomId))
+            _logger.LogWarning("Room", $"Cannot set game mode - room {roomId} not found");
             return;
+        }
 
-        _roomThemeFactories[roomId] = CreateThemeFactory(theme);
+        var oldFactory = _roomModeFactories[roomId];
+        var oldMode = oldFactory.GetModeName();
+        var oldDropRate = oldFactory.GetPowerUpDropRate();
+
+        _roomModeFactories[roomId] = CreateGameModeFactory(gameMode);
+
+        var newMode = _roomModeFactories[roomId].GetModeName();
+        var newDropRate = _roomModeFactories[roomId].GetPowerUpDropRate();
+
+        _logger.LogInfo("Room", $"Changed room {roomId} game mode from {oldMode} (drop: {oldDropRate:P0}) to {newMode} (drop: {newDropRate:P0})");
     }
 
     public GameRoom? GetRoom(string roomId)
@@ -177,14 +185,14 @@ public class GameService : IGameService
 
         if (!room.StateHandler.CanJoinPlayer(room))
         {
-            _logger.LogWarning("Room", $"Player {player.Name} cannot join room {roomId}");
+            _logger.LogWarning("Room", $"Player {player.Name} cannot join room {roomId} in state {room.State}");
             return false;
         }
 
         var playerCount = room.Players.Count;
         if (playerCount >= _config.MaxPlayersPerRoom)
         {
-            _logger.LogWarning("Room", $"Room {roomId} is full");
+            _logger.LogWarning("Room", $"Room {roomId} is full ({playerCount}/{_config.MaxPlayersPerRoom})");
             return false;
         }
 
@@ -210,6 +218,14 @@ public class GameService : IGameService
         newPlayer.X = spawn.X;
         newPlayer.Y = spawn.Y;
 
+        if (_roomModeFactories.TryGetValue(roomId, out var modeFactory))
+        {
+            modeFactory.ApplyModeEffectsToPlayer(newPlayer);
+            var gameMode = modeFactory.GetModeName();
+            _logger.LogInfo("GameMode", $"Applied {gameMode} mode effects to player {newPlayer.Name}");
+            _logger.LogInfo("GameMode", $"Player stats - Bombs: {newPlayer.BombCount}, Range: {newPlayer.BombRange}, Speed: {newPlayer.Speed}");
+        }
+
         room.Players.Add(newPlayer);
         _roomDecorators[roomId].RegisterPlayer(newPlayer);
 
@@ -221,7 +237,8 @@ public class GameService : IGameService
 
         await SaveRoomDataAsync(roomId, room);
 
-        _logger.LogInfo("Room", $"Player {newPlayer.Name} ({prototypeKey} role) joined room {roomId}");
+        var currentGameMode = GetRoomGameMode(roomId);
+        _logger.LogInfo("Room", $"Player {newPlayer.Name} ({prototypeKey} role) joined room {roomId} ({currentGameMode} mode)");
 
         return true;
     }
@@ -235,9 +252,7 @@ public class GameService : IGameService
             room.State = GameState.Playing;
 
             var prototypeBoard = _prototypeManager.CreateBoardFromPrototype("standard");
-            room.Board = prototypeBoard ?? _gameFactory.CreateGameBoard();
-
-            _roomBombFactories[roomId] = new EnhancedBombFactory();
+            room.Board = prototypeBoard ?? new GameBoard();
 
             room.UpdateStateHandler();
 
@@ -248,8 +263,22 @@ public class GameService : IGameService
 
             await SaveRoomDataAsync(roomId, room);
 
-            var theme = _roomThemeFactories[roomId].GetThemeName();
-            _logger.LogInfo("Game", $"Game started in room {roomId} with {room.Players.Count} players using {theme} theme");
+            var modeName = GetRoomGameMode(roomId);
+            var modeDescription = GetRoomGameModeDescription(roomId);
+            var dropRate = GetRoomPowerUpDropRate(roomId);
+
+            _logger.LogInfo("Game", $"Game started in room {roomId} with {room.Players.Count} players");
+            _logger.LogInfo("Game", $"Mode: {modeName} - {modeDescription}");
+            _logger.LogInfo("Game", $"PowerUp drop rate: {dropRate:P0}");
+
+            foreach (var p in room.Players)
+            {
+                _logger.LogInfo("Game", $"Player {p.Name}: Bombs={p.BombCount}, Range={p.BombRange}, Speed={p.Speed}");
+            }
+        }
+        else if (room != null)
+        {
+            _logger.LogWarning("Game", $"Cannot start game in room {roomId} - State: {room.State}, Players: {room.Players.Count}");
         }
     }
 
@@ -269,9 +298,7 @@ public class GameService : IGameService
             return false;
 
         if (!player.MovementStrategy.CanMoveNow(player.Id))
-        {
             return false;
-        }
 
         player.X = newX;
         player.Y = newY;
@@ -296,7 +323,7 @@ public class GameService : IGameService
 
     private void ApplyPowerUpToPlayer(string roomId, string playerId, Player player, PowerUp powerUp)
     {
-        var powerUpEffect = PowerUps.PowerUpFactory.CreatePowerUp(powerUp.Type);
+        var powerUpEffect = PowerUpEffectFactory.CreateEffect(powerUp.Type);
         powerUpEffect.ApplyEffect(player);
 
         if (_roomDecorators.TryGetValue(roomId, out var decoratorManager))
@@ -305,9 +332,11 @@ public class GameService : IGameService
             {
                 case PowerUpType.BombUp:
                     decoratorManager.ApplyBombUpgrade(playerId);
+                    _logger.LogInfo("PowerUp", $"Player {player.Name} collected BombUp - Now has {player.BombCount} bombs");
                     break;
                 case PowerUpType.RangeUp:
                     decoratorManager.ApplyRangeUpgrade(playerId);
+                    _logger.LogInfo("PowerUp", $"Player {player.Name} collected RangeUp - Now has {player.BombRange} range");
                     break;
                 case PowerUpType.SpeedUp:
                     decoratorManager.ApplySpeedUpgrade(playerId);
@@ -320,7 +349,7 @@ public class GameService : IGameService
                         player.MovementStrategy.GetBaseMovementCooldownMs()
                     );
 
-                    _logger.LogInfo("PowerUp", $"Player {player.Name} collected SpeedUp (x{boostCount}) - Delay: {effectiveCooldown}ms");
+                    _logger.LogInfo("PowerUp", $"Player {player.Name} collected SpeedUp (x{boostCount}) - Delay: {effectiveCooldown}ms, Speed: {player.Speed}");
                     break;
             }
         }
@@ -340,6 +369,7 @@ public class GameService : IGameService
             }
         }
 
+        _logger.LogInfo("Prototype", $"Generated {previews.Count} role previews");
         return previews;
     }
 
@@ -363,13 +393,21 @@ public class GameService : IGameService
 
         var playerBombs = room.Board.Bombs.Count(b => b.PlayerId == playerId);
         if (playerBombs >= effectiveBombCount)
+        {
+            _logger.LogDebug("Bomb", $"Player {player.Name} already has max bombs ({playerBombs}/{effectiveBombCount})");
             return false;
+        }
 
         if (room.Board.Bombs.Any(b => b.X == player.X && b.Y == player.Y))
+        {
+            _logger.LogDebug("Bomb", $"Bomb already exists at position ({player.X}, {player.Y})");
             return false;
+        }
 
-        var bombFactory = _roomBombFactories.GetValueOrDefault(roomId, new StandardBombFactory());
-        var bomb = bombFactory.CreateBomb(player.X, player.Y, playerId, effectiveBombRange);
+        var modeFactory = _roomModeFactories.GetValueOrDefault(roomId, new StandardModeFactory());
+        var bombFactory = modeFactory.GetBombFactory();
+
+        var bomb = bombFactory.CreateAndConfigureBomb(player.X, player.Y, playerId, effectiveBombRange);
         room.Board.Bombs.Add(bomb);
 
         _gameEventSubject.Notify(new BombPlacedEvent
@@ -377,6 +415,11 @@ public class GameService : IGameService
             RoomId = roomId,
             Bomb = bomb
         });
+
+        var gameMode = GetRoomGameMode(roomId);
+        var factoryName = bombFactory.GetType().Name;
+        _logger.LogInfo("Bomb", $"Player {player.Name} placed bomb in {gameMode} mode using {factoryName}");
+        _logger.LogInfo("Bomb", $"Bomb at ({bomb.X}, {bomb.Y}) with range {bomb.Range}");
 
         if (_roomRenderers.TryGetValue(roomId, out var renderer))
         {
@@ -415,6 +458,10 @@ public class GameService : IGameService
                     Explosions = explosions
                 });
 
+                var gameMode = GetRoomGameMode(room.Id);
+                _logger.LogInfo("Explosion", $"Bomb exploded in {gameMode} mode at ({bomb.X}, {bomb.Y})");
+                _logger.LogInfo("Explosion", $"Created {explosions.Count} explosion cells");
+
                 updated = true;
             }
 
@@ -433,7 +480,12 @@ public class GameService : IGameService
                 if (alivePlayers.Count == 1)
                 {
                     var winner = alivePlayers[0];
-                    _logger.LogInfo("Game", $"Player {winner.Name} won in room {room.Id}");
+                    var gameMode = GetRoomGameMode(room.Id);
+                    _logger.LogInfo("Game", $"Player {winner.Name} won in room {room.Id} ({gameMode} mode)");
+                }
+                else
+                {
+                    _logger.LogInfo("Game", $"Game ended in room {room.Id} with no survivors (Draw)");
                 }
 
                 updated = true;
@@ -453,7 +505,11 @@ public class GameService : IGameService
         var explosions = new List<Explosion>();
         var directions = new[] { (0, 0), (0, 1), (0, -1), (1, 0), (-1, 0) };
 
-        var themeFactory = _roomThemeFactories.GetValueOrDefault(room.Id, new ClassicThemeFactory());
+        var modeFactory = _roomModeFactories.GetValueOrDefault(room.Id, new StandardModeFactory());
+        var powerUpDropRate = modeFactory.GetPowerUpDropRate();
+
+        var gameMode = modeFactory.GetModeName();
+        _logger.LogDebug("Explosion", $"Exploding bomb in {gameMode} mode with {powerUpDropRate:P0} drop rate");
 
         foreach (var (dx, dy) in directions)
         {
@@ -469,26 +525,28 @@ public class GameService : IGameService
                 if (cellType == CellType.Wall)
                     break;
 
-                var explosion = themeFactory.CreateExplosion(x, y);
+                var explosion = modeFactory.CreateExplosion(x, y);
                 explosions.Add(explosion);
 
                 var hitPlayer = room.Players.FirstOrDefault(p => p.X == x && p.Y == y && p.IsAlive);
                 if (hitPlayer != null)
                 {
                     hitPlayer.IsAlive = false;
-
-                    _logger.LogInfo("Game", $"Player {hitPlayer.Name} was eliminated");
+                    _logger.LogInfo("Game", $"Player {hitPlayer.Name} was eliminated in {gameMode} mode at ({x}, {y})");
                 }
 
                 if (cellType == CellType.DestructibleWall)
                 {
                     room.Board.Grid[y][x] = (int)CellType.Empty;
 
-                    if (Random.Shared.NextDouble() < _config.PowerUpDropChance)
+                    if (Random.Shared.NextDouble() < powerUpDropRate)
                     {
-                        var powerUpType = (PowerUpType)Random.Shared.Next(0, 3);
-                        var powerUp = themeFactory.CreatePowerUp(x, y, powerUpType);
+                        var powerUpType = (PowerUpType)Random.Shared.Next(0, 4);
+
+                        var powerUp = modeFactory.CreatePowerUp(x, y, powerUpType);
                         room.Board.PowerUps.Add(powerUp);
+
+                        _logger.LogInfo("PowerUp", $"Dropped {powerUpType} in {gameMode} mode at ({x}, {y}) (rate: {powerUpDropRate:P0})");
                     }
 
                     break;
@@ -545,26 +603,40 @@ public class GameService : IGameService
             _roomRenderers[roomId] = renderer;
             _logger.LogInfo("Bridge", $"Renderer changed for room {roomId} to {renderer.GetType().Name}");
         }
-    }
-
-    public string GetRoomTheme(string roomId)
-    {
-        if (_roomThemeFactories.TryGetValue(roomId, out var factory))
+        else
         {
-            return factory.GetThemeName();
+            _logger.LogWarning("Bridge", $"Cannot set renderer - room {roomId} not found");
         }
-        return "Unknown";
     }
 
-    public string GetRoomBombFactoryType(string roomId)
+    public string GetRoomGameMode(string roomId)
     {
-        if (_roomBombFactories.TryGetValue(roomId, out var factory))
+        if (_roomModeFactories.TryGetValue(roomId, out var factory))
         {
-            return factory.GetType().Name;
+            return factory.GetModeName();
         }
-        return "Unknown";
+
+        _logger.LogWarning("Factory", $"No game mode factory found for room {roomId}, defaulting to Standard");
+        return "Standard";
     }
 
+    public string GetRoomGameModeDescription(string roomId)
+    {
+        if (_roomModeFactories.TryGetValue(roomId, out var factory))
+        {
+            return factory.GetModeDescription();
+        }
 
+        _logger.LogWarning("Factory", $"No game mode factory found for room {roomId}");
+        return "Balanced gameplay with standard mechanics";
+    }
+
+    private double GetRoomPowerUpDropRate(string roomId)
+    {
+        if (_roomModeFactories.TryGetValue(roomId, out var factory))
+        {
+            return factory.GetPowerUpDropRate();
+        }
+        return 0.3;
+    }
 }
-

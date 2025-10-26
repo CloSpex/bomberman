@@ -2,9 +2,9 @@ using BombermanGame.Models;
 
 namespace BombermanGame.PowerUps;
 
-public class PowerUpFactory
+public static class PowerUpEffectFactory
 {
-    public static IPowerUpEffect CreatePowerUp(PowerUpType type)
+    public static IPowerUpEffect CreateEffect(PowerUpType type)
     {
         return type switch
         {

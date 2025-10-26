@@ -13,7 +13,6 @@ using Microsoft.AspNetCore.SignalR;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddCors(options =>
 {
@@ -34,7 +33,6 @@ var logger = GameLogger.Instance;
 config.UpdatePowerUpDropChance(0.3);
 logger.LogInfo("Startup", "Game configuration loaded");
 
-builder.Services.AddSingleton<IGameFactory, GameFactory>();
 
 builder.Services.AddSingleton<ICommandHandler, GameCommandHandler>();
 
@@ -61,7 +59,6 @@ var eventPublisher = app.Services.GetRequiredService<IEventPublisher>();
 
 app.UseCors("AllowReactApp");
 app.UseRouting();
-app.MapControllers();
 app.MapHub<GameHub>("/gamehub");
 
 

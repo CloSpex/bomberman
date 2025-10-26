@@ -17,11 +17,11 @@ public class GameHub : Hub
         _gameService = gameService;
     }
 
-    public async Task JoinRoom(string roomId, string playerName)
+    public async Task JoinRoom(string roomId, string playerName, string gameMode = "standard")
     {
         try
         {
-            _logger.LogInfo("Hub", $"Player {playerName} attempting to join room {roomId}");
+            _logger.LogInfo("Hub", $"Player {playerName} attempting to join room {roomId} with mode {gameMode}");
 
             var player = new Player
             {
@@ -29,13 +29,20 @@ public class GameHub : Hub
                 Name = playerName
             };
 
+            var room = _gameService.GetRoom(roomId);
+            if (room == null)
+            {
+                room = _gameService.CreateRoom(roomId, gameMode);
+                _logger.LogInfo("Hub", $"Created new room {roomId} with {gameMode} mode");
+            }
+
             var success = await _gameService.JoinRoomAsync(roomId, player);
 
             if (success)
             {
                 await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
-                var room = _gameService.GetRoom(roomId);
+                room = _gameService.GetRoom(roomId);
                 if (room != null)
                 {
                     var roomResponse = CreateRoomResponse(roomId, room);
@@ -66,46 +73,6 @@ public class GameHub : Hub
         catch (Exception ex)
         {
             _logger.LogError("Hub", $"Error in RolePreviews: {ex.Message}");
-        }
-    }
-
-    public async Task ChangeBombFactory(string roomId, string factoryType)
-    {
-        try
-        {
-            _gameService.SetRoomBombFactory(roomId, factoryType);
-            _logger.LogInfo("Hub", $"Bomb factory changed to {factoryType} for room {roomId}");
-
-            var room = _gameService.GetRoom(roomId);
-            if (room != null)
-            {
-                var roomResponse = CreateRoomResponse(roomId, room);
-                await Clients.Group(roomId).SendAsync("FactoryChanged", roomResponse);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Hub", $"Error in ChangeBombFactory: {ex.Message}");
-        }
-    }
-
-    public async Task ChangeTheme(string roomId, string theme)
-    {
-        try
-        {
-            _gameService.SetRoomTheme(roomId, theme);
-            _logger.LogInfo("Hub", $"Theme changed to {theme} for room {roomId}");
-
-            var room = _gameService.GetRoom(roomId);
-            if (room != null)
-            {
-                var roomResponse = CreateRoomResponse(roomId, room);
-                await Clients.Group(roomId).SendAsync("ThemeChanged", roomResponse);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Hub", $"Error in ChangeTheme: {ex.Message}");
         }
     }
 
@@ -296,8 +263,8 @@ public class GameHub : Hub
     private object CreateRoomResponse(string roomId, GameRoom room)
     {
         var renderer = _gameService.GetRoomRenderer(roomId);
-        var theme = _gameService.GetRoomTheme(roomId);
-        var bombFactoryType = _gameService.GetRoomBombFactoryType(roomId);
+        var gameMode = _gameService.GetRoomGameMode(roomId);
+        var gameModeDescription = _gameService.GetRoomGameModeDescription(roomId);
 
         var playersList = room.Players?.Select(p => (object)new
         {
@@ -367,8 +334,8 @@ public class GameHub : Hub
                 state = room.State.ToString(),
                 textView = textView,
                 rendererType = "text",
-                theme = theme,
-                bombFactory = bombFactoryType
+                gameMode = gameMode,
+                gameModeDescription = gameModeDescription
             };
         }
 
@@ -379,8 +346,8 @@ public class GameHub : Hub
             board = boardData,
             state = room.State.ToString(),
             rendererType = renderer?.GetType().Name.Replace("GameRenderer", "").ToLower() ?? "json",
-            theme = theme,
-            bombFactory = bombFactoryType
+            gameMode = gameMode,
+            gameModeDescription = gameModeDescription
         };
     }
 }

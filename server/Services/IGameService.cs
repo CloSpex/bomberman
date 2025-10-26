@@ -5,20 +5,21 @@ namespace BombermanGame.Services;
 
 public interface IGameService
 {
-    GameRoom CreateRoom(string roomId, string theme = "classic");
+    GameRoom CreateRoom(string roomId, string gameMode = "standard");
     GameRoom? GetRoom(string roomId);
     List<GameRoom> GetRooms();
 
     Task<bool> JoinRoomAsync(string roomId, Player player);
+    List<Player> GetPlayerRolePreviews();
+
     Task StartGameAsync(string roomId);
     Task<bool> MovePlayerAsync(string roomId, string playerId, int deltaX, int deltaY);
     Task<bool> PlaceBombAsync(string roomId, string playerId);
-    void SetRoomBombFactory(string roomId, string factoryType);
-    string GetRoomBombFactoryType(string roomId);
 
-    void SetRoomTheme(string roomId, string theme);
-    string GetRoomTheme(string roomId);
     IGameRenderer? GetRoomRenderer(string roomId);
-    List<Player> GetPlayerRolePreviews();
     void SetRoomRenderer(string roomId, IGameRenderer renderer);
+
+    void SetRoomGameMode(string roomId, string gameMode);
+    string GetRoomGameMode(string roomId);
+    string GetRoomGameModeDescription(string roomId);
 }

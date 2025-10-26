@@ -68,14 +68,6 @@ const normalizeGameRoom = (data: any): GameRoom | null => {
     }
 
     console.log("Normalized room data:", normalized);
-    console.log(
-      "Normalized state:",
-      normalized.state,
-      "Type:",
-      typeof normalized.state,
-    );
-    console.log("Players count:", normalized.players.length);
-
     return normalized;
   } catch (error) {
     console.error("Error normalizing room data:", error);
@@ -95,6 +87,8 @@ export default function BombermanGame() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isCreatingRoom, setIsCreatingRoom] = useState(false);
   const [rendererType, setRendererType] = useState("canvas");
+  const [gameMode, setGameMode] = useState("standard");
+  const [gameModeDescription, setGameModeDescription] = useState("");
 
   useEffect(() => {
     const newConnection = new signalR.HubConnectionBuilder()
@@ -117,11 +111,6 @@ export default function BombermanGame() {
 
           const handleRoomUpdate = (eventName: string) => (roomData: any) => {
             console.log(`${eventName} received:`, roomData);
-            console.log("Raw data type:", typeof roomData);
-            console.log(
-              "Players in data:",
-              roomData?.players || roomData?.Players,
-            );
 
             const normalizedRoom = normalizeGameRoom(roomData);
 
@@ -136,10 +125,18 @@ export default function BombermanGame() {
                 setRendererType(roomData.rendererType || roomData.RendererType);
               }
 
-              const theme = roomData.theme || roomData.Theme;
-              const bombFactory = roomData.bombFactory || roomData.BombFactory;
-              if (theme) console.log("Theme:", theme);
-              if (bombFactory) console.log("BombFactory:", bombFactory);
+              const mode = roomData.gameMode || roomData.GameMode;
+              const modeDesc =
+                roomData.gameModeDescription || roomData.GameModeDescription;
+
+              if (mode) {
+                console.log("Game Mode:", mode);
+                setGameMode(mode);
+              }
+              if (modeDesc) {
+                console.log("Game Mode Description:", modeDesc);
+                setGameModeDescription(modeDesc);
+              }
             } else {
               console.error(`Failed to normalize room data from ${eventName}`);
             }
@@ -149,8 +146,6 @@ export default function BombermanGame() {
           connection.on("GameStarted", handleRoomUpdate("GameStarted"));
           connection.on("GameUpdated", handleRoomUpdate("GameUpdated"));
           connection.on("RendererChanged", handleRoomUpdate("RendererChanged"));
-          connection.on("FactoryChanged", handleRoomUpdate("FactoryChanged"));
-          connection.on("ThemeChanged", handleRoomUpdate("ThemeChanged"));
 
           connection.on("JoinFailed", (message: string) => {
             console.error("Join failed:", message);
@@ -194,7 +189,7 @@ export default function BombermanGame() {
     }
   }, [connection]);
 
-  const createRoom = async () => {
+  const createRoom = async (selectedGameMode: string) => {
     if (!connection || !playerName.trim()) {
       setErrorMessage("Please enter a player name");
       return;
@@ -217,8 +212,15 @@ export default function BombermanGame() {
       setRoomId(newRoomId);
       console.log("Creating room with ID:", newRoomId);
       console.log("Player name:", playerName);
+      console.log("Game mode:", selectedGameMode);
 
-      await connection.invoke("JoinRoom", newRoomId, playerName);
+      // Pass game mode when creating room
+      await connection.invoke(
+        "JoinRoom",
+        newRoomId,
+        playerName,
+        selectedGameMode,
+      );
       setCurrentPlayerId(connection.connectionId || "");
 
       console.log("Room creation request sent successfully");
@@ -246,7 +248,7 @@ export default function BombermanGame() {
       setErrorMessage("");
       console.log("Joining room:", roomId, "as", playerName);
 
-      await connection.invoke("JoinRoom", roomId, playerName);
+      await connection.invoke("JoinRoom", roomId, playerName, "standard");
       setCurrentPlayerId(connection.connectionId || "");
 
       console.log("Room join request sent successfully");
@@ -325,6 +327,8 @@ export default function BombermanGame() {
       startGame={startGame}
       rendererType={rendererType}
       changeRenderer={changeRenderer}
+      gameMode={gameMode}
+      gameModeDescription={gameModeDescription}
     />
   );
 }
