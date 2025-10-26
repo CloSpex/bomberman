@@ -3,20 +3,28 @@ using System.Collections.Concurrent;
 
 namespace BombermanGame.Singletons;
 
-
 public sealed class GameConfiguration
 {
     private static GameConfiguration _instance;
+    private static readonly object _lock = new object();
 
     public static GameConfiguration Instance
     {
         get
         {
             if (_instance == null)
-                _instance = new GameConfiguration();
+            {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                        _instance = new GameConfiguration();
+                }
+            }
             return _instance;
         }
     }
+
+    private GameConfiguration() { }
 
     public int MaxPlayersPerRoom { get; private set; } = 4;
     public int BombExplosionTimeSeconds { get; private set; } = 3;
@@ -102,16 +110,25 @@ public sealed class GameConfiguration
 public sealed class GameStatistics
 {
     private static GameStatistics _instance;
+    private static readonly object _lock = new object();
 
     public static GameStatistics Instance
     {
         get
         {
             if (_instance == null)
-                _instance = new GameStatistics();
+            {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                        _instance = new GameStatistics();
+                }
+            }
             return _instance;
         }
     }
+
+    private GameStatistics() { }
 
     private readonly ConcurrentDictionary<string, int> _playerWins = new();
     private readonly ConcurrentDictionary<string, int> _playerGamesPlayed = new();
@@ -188,17 +205,27 @@ public sealed class GameStatistics
 
 public sealed class GameLogger
 {
+
     private static GameLogger _instance;
+    private static readonly object _lock = new();
 
     public static GameLogger Instance
     {
         get
         {
             if (_instance == null)
-                _instance = new GameLogger();
+            {
+                lock (_lock)
+                {
+                    if (_instance == null)
+                        _instance = new GameLogger();
+                }
+            }
             return _instance;
         }
     }
+
+    private GameLogger() { }
 
     private readonly ConcurrentQueue<LogEntry> _logQueue = new();
     private readonly int _maxLogEntries = 1000;
