@@ -4,6 +4,7 @@ using BombermanGame.Facades;
 using BombermanGame.Bridges;
 using BombermanGame.Singletons;
 using BombermanGame.Models;
+using System.Linq;
 
 namespace BombermanGame.Hubs;
 
@@ -38,7 +39,9 @@ public class GameHub : Hub
                 await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
 
                 var roomResponse = CreateRoomResponse(roomId, room);
+
                 await Clients.Group(roomId).SendAsync("PlayerJoined", roomResponse);
+
                 _logger.LogInfo("Hub", $"Player {playerName} successfully joined room {roomId}");
             }
             else
@@ -53,6 +56,7 @@ public class GameHub : Hub
             await Clients.Caller.SendAsync("JoinFailed", "An error occurred while joining the room");
         }
     }
+
     public async Task RolePreviews()
     {
         try
@@ -65,6 +69,7 @@ public class GameHub : Hub
             _logger.LogError("Hub", $"Error in RolePreviews: {ex.Message}");
         }
     }
+
     public async Task ChangeBombFactory(string roomId, string factoryType)
     {
         try
@@ -276,50 +281,88 @@ public class GameHub : Hub
         var theme = _gameService.GetRoomTheme(roomId);
         var bombFactoryType = _gameService.GetRoomBombFactoryType(roomId);
 
-        if (renderer is TextGameRenderer)
+        var playersList = room.Players?.Select(p => (object)new
         {
-            var boardElement = new GameBoardElement(room.Board, renderer);
-            var textView = boardElement.Render() + "\n\n";
+            id = p.Id,
+            name = p.Name,
+            x = p.X,
+            y = p.Y,
+            isAlive = p.IsAlive,
+            bombCount = p.BombCount,
+            bombRange = p.BombRange,
+            color = p.Color,
+            speed = p.Speed
+        }).ToList() ?? new List<object>();
 
-            textView += "Players:\n";
-            foreach (var player in room.Players)
+        var boardData = new
+        {
+            grid = room.Board?.Grid ?? Array.Empty<int[]>(),
+            bombs = room.Board?.Bombs?.Select(b => (object)new
             {
-                var playerElement = new PlayerElement(player, renderer);
-                textView += playerElement.Render() + "\n";
-            }
+                x = b.X,
+                y = b.Y,
+                playerId = b.PlayerId,
+                range = b.Range,
+                placedAt = b.PlacedAt
+            }).ToList() ?? new List<object>(),
+            explosions = room.Board?.Explosions?.Select(e => (object)new
+            {
+                x = e.X,
+                y = e.Y,
+                createdAt = e.CreatedAt
+            }).ToList() ?? new List<object>(),
+            powerUps = room.Board?.PowerUps?.Select(p => (object)new
+            {
+                x = p.X,
+                y = p.Y,
+                type = p.Type.ToString()
+            }).ToList() ?? new List<object>()
+        };
 
-            if (room.Board.Bombs.Any())
+        if (renderer is TextGameRenderer)
+            if (renderer is TextGameRenderer)
             {
-                textView += "\nBombs:\n";
-                foreach (var bomb in room.Board.Bombs)
+                var boardElement = new GameBoardElement(room.Board, renderer);
+                var textView = boardElement.Render() + "\n\n";
+
+                textView += "Players:\n";
+                foreach (var player in room.Players ?? Enumerable.Empty<Player>())
                 {
-                    var bombElement = new BombElement(bomb, renderer);
-                    textView += bombElement.Render() + "\n";
+                    var playerElement = new PlayerElement(player, renderer);
+                    textView += playerElement.Render() + "\n";
                 }
+
+                if (room.Board?.Bombs?.Any() == true)
+                {
+                    textView += "\nBombs:\n";
+                    foreach (var bomb in room.Board.Bombs)
+                    {
+                        var bombElement = new BombElement(bomb, renderer);
+                        textView += bombElement.Render() + "\n";
+                    }
+                }
+
+                return new
+                {
+                    id = room.Id,
+                    players = playersList,
+                    board = boardData,
+                    state = room.State.ToString(),
+                    textView = textView,
+                    rendererType = "text",
+                    theme = theme,
+                    bombFactory = bombFactoryType
+                };
             }
-
-            return new
-            {
-                room.Id,
-                room.Players,
-                room.Board,
-                room.State,
-                TextView = textView,
-                RendererType = "text",
-                Theme = theme,
-                BombFactory = bombFactoryType
-            };
-        }
-
         return new
         {
-            room.Id,
-            room.Players,
-            room.Board,
-            room.State,
-            RendererType = renderer?.GetType().Name.Replace("GameRenderer", "").ToLower() ?? "json",
-            Theme = theme,
-            BombFactory = bombFactoryType
+            id = room.Id,
+            players = playersList,
+            board = boardData,
+            state = room.State.ToString(),
+            rendererType = renderer?.GetType().Name.Replace("GameRenderer", "").ToLower() ?? "json",
+            theme = theme,
+            bombFactory = bombFactoryType
         };
     }
 }
