@@ -2,8 +2,6 @@ using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using BombermanGame.Models;
 using BombermanGame.Events;
-using BombermanGame.Factories;
-using BombermanGame.Factories.FactoryMethod;
 using BombermanGame.Factories.AbstractFactory;
 using BombermanGame.Hubs;
 using BombermanGame.Decorators;
