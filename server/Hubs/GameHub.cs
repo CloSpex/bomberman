@@ -3,7 +3,7 @@ using BombermanGame.Services;
 using BombermanGame.Bridges;
 using BombermanGame.Singletons;
 using BombermanGame.Models;
-using System.Linq;
+using BombermanGame.Commands;
 
 namespace BombermanGame.Hubs;
 
@@ -137,20 +137,21 @@ public class GameHub : Hub
     {
         try
         {
-            var success = await _gameService.MovePlayerAsync(
-                roomId,
-                Context.ConnectionId,
-                deltaX,
-                deltaY
-            );
+            var playerId = Context.ConnectionId;
+            var command = new MovePlayerCommand(_gameService, roomId, playerId, deltaX, deltaY);
+            var results = await command.ExecuteAsync();
 
-            if (success)
+            if (results.Success)
             {
                 var room = _gameService.GetRoom(roomId);
                 if (room != null)
                 {
                     var roomResponse = CreateRoomResponse(roomId, room);
                     await Clients.Group(roomId).SendAsync("GameUpdated", roomResponse);
+
+                    _gameService.AddPreviousMoveCommand(playerId, command);
+
+                    _logger.LogDebug("Hub", $"Player {Context.ConnectionId} moved in room {roomId}");
                 }
             }
             else
@@ -168,18 +169,20 @@ public class GameHub : Hub
     {
         try
         {
-            var success = await _gameService.PlaceBombAsync(
-                roomId,
-                Context.ConnectionId
-            );
+            var playerId = Context.ConnectionId;
+            var command = new PlaceBombCommand(_gameService, roomId, playerId);
+            var results = await command.ExecuteAsync();
 
-            if (success)
+            if (results.Success)
             {
                 var room = _gameService.GetRoom(roomId);
                 if (room != null)
                 {
                     var roomResponse = CreateRoomResponse(roomId, room);
                     await Clients.Group(roomId).SendAsync("GameUpdated", roomResponse);
+
+                    _gameService.AddPreviousBombCommand(playerId, command);
+
                     _logger.LogDebug("Hub", $"Bomb placed by player {Context.ConnectionId} in room {roomId}");
                 }
             }
@@ -257,6 +260,84 @@ public class GameHub : Hub
         catch (Exception ex)
         {
             _logger.LogError("Hub", $"Error in ChangeRenderer: {ex.Message}");
+        }
+    }
+
+    public async Task UndoBombPlacement(string roomId)
+    {
+        try
+        {
+            var playerId = Context.ConnectionId;
+            var lastPlaceBombCommand = _gameService.GetPreviousBombCommand(playerId);
+
+            if (lastPlaceBombCommand == null)
+            {
+                _logger.LogDebug("Hub", $"No bomb placement to undo for player {Context.ConnectionId} in room {roomId}");
+                return;
+            }
+
+            var results = await lastPlaceBombCommand.UndoAsync();
+            
+            if (results.Success)
+            {
+                var room = _gameService.GetRoom(roomId);
+                if (room != null)
+                {
+                    var roomResponse = CreateRoomResponse(roomId, room);
+                    await Clients.Group(roomId).SendAsync("GameUpdated", roomResponse);
+
+                    _gameService.RemovePreviousBombCommand(playerId);
+
+                    _logger.LogDebug("Hub", $"Player {Context.ConnectionId} undid bomb placement in room {roomId}");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Hub", $"Undo bomb placement failed for player {Context.ConnectionId} in room {roomId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Hub", $"Error in UndoBombPlacement: {ex.Message}");
+        }
+    }
+
+    public async Task UndoLastMove(string roomId)
+    {
+        try
+        {
+            var playerId = Context.ConnectionId;
+            var lastMoveCommand = _gameService.GetPreviousMoveCommand(playerId);
+
+            if (lastMoveCommand == null)
+            {
+                _logger.LogDebug("Hub", $"No move to undo for player {Context.ConnectionId} in room {roomId}");
+                return;
+            }
+
+            var results = await lastMoveCommand.UndoAsync();
+            
+            if (results.Success)
+            {
+                var room = _gameService.GetRoom(roomId);
+                if (room != null)
+                {
+                    var roomResponse = CreateRoomResponse(roomId, room);
+                    await Clients.Group(roomId).SendAsync("GameUpdated", roomResponse);
+
+                    _gameService.RemovePreviousMoveCommand(playerId);
+
+                    _logger.LogDebug("Hub", $"Player {Context.ConnectionId} undid last move in room {roomId}");
+                }
+            }
+            else
+            {
+                _logger.LogDebug("Hub", $"Undo last move failed for player {Context.ConnectionId} in room {roomId}. Message: {results.Message}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Hub", $"Error in UndoLastMove: {ex.Message}");
         }
     }
 

@@ -5,7 +5,7 @@ namespace BombermanGame.Singletons;
 
 public sealed class GameConfiguration
 {
-    private static GameConfiguration _instance;
+    private static GameConfiguration? _instance;
     private static readonly object _lock = new object();
 
     public static GameConfiguration Instance
@@ -110,7 +110,7 @@ public sealed class GameConfiguration
 public sealed class GameLogger
 {
 
-    private static GameLogger _instance;
+    private static GameLogger? _instance;
     private static readonly object _lock = new();
 
     public static GameLogger Instance

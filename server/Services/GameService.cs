@@ -14,12 +14,15 @@ using BombermanGame.Adapters;
 using BombermanGame.Bridges;
 using BombermanGame.Builders;
 using BombermanGame.PowerUps;
+using BombermanGame.Commands;
 
 namespace BombermanGame.Services;
 
 public class GameService : IGameService
 {
     private readonly ConcurrentDictionary<string, GameRoom> _rooms = new();
+    private readonly ConcurrentDictionary<string, MovePlayerCommand> _lastMoveCommands = new();
+    private readonly ConcurrentDictionary<string, PlaceBombCommand> _lastBombCommands = new();
     private readonly Dictionary<string, PlayerDecoratorManager> _roomDecorators = new();
     private readonly Dictionary<string, IGameRenderer> _roomRenderers = new();
     private readonly Dictionary<string, IGameModeFactory> _roomModeFactories = new();
@@ -319,6 +322,38 @@ public class GameService : IGameService
         await SaveRoomDataAsync(roomId, room);
 
         return true;
+    }
+
+    public void AddPreviousMoveCommand(string playerId, MovePlayerCommand command)
+    {
+        _lastMoveCommands[playerId] = command;
+    }
+
+    public void AddPreviousBombCommand(string playerId, PlaceBombCommand command)
+    {
+        _lastBombCommands[playerId] = command;
+    }
+
+    public MovePlayerCommand? GetPreviousMoveCommand(string playerId)
+    {
+        _lastMoveCommands.TryGetValue(playerId, out var command);
+        return command;
+    }
+
+    public PlaceBombCommand? GetPreviousBombCommand(string playerId)
+    {
+        _lastBombCommands.TryGetValue(playerId, out var command);
+        return command;
+    }
+
+    public void RemovePreviousMoveCommand(string playerId)
+    {
+        _lastMoveCommands.TryRemove(playerId, out _);
+    }
+
+    public void RemovePreviousBombCommand(string playerId)
+    {
+        _lastBombCommands.TryRemove(playerId, out _);
     }
 
     private void ApplyPowerUpToPlayer(string roomId, string playerId, Player player, PowerUp powerUp)

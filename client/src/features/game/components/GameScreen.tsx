@@ -60,6 +60,24 @@ const GameScreen: React.FC<GameScreenProps> = ({
     return gameRoom.players.find((p) => p.isAlive);
   };
 
+  const undoLastMove = async () => {
+    if (!connection) return;
+    try {
+      await connection.invoke("UndoLastMove", roomId);
+    } catch (error) {
+      console.error("Failed to undo last move:", error);
+    }
+  };
+
+  const undoBombPlacement = async () => {
+    if (!connection) return;
+    try {
+      await connection.invoke("UndoBombPlacement", roomId);
+    } catch (error) {
+      console.error("Failed to undo bomb placement:", error);
+    }
+  };
+
   const fetchRolePreviews = async () => {
     if (!connection) return;
 
@@ -191,7 +209,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
           </div>
 
           <div className="space-y-4">
-            <div className="mt-4">
+            <div className="mt-4 space-y-2">
+
+              <button
+                onClick={undoBombPlacement}
+                className="bg-orange-400 hover:bg-orange-700 px-4 py-2 rounded w-full"
+              >
+                Undo Bomb Placement
+              </button>
+
+              <button
+                onClick={undoLastMove}
+                className="bg-orange-400 hover:bg-orange-700 px-4 py-2 rounded w-full"
+              >
+                Undo Last Move
+              </button>
+
               <button
                 onClick={fetchRolePreviews}
                 className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded w-full"

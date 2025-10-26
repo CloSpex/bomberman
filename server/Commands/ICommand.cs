@@ -3,6 +3,7 @@ namespace BombermanGame.Commands;
 public interface ICommand
 {
     Task<CommandResult> ExecuteAsync();
+    Task<CommandResult> UndoAsync();
 }
 
 public class CommandResult

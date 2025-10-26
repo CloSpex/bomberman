@@ -1,5 +1,6 @@
 using BombermanGame.Models;
 using BombermanGame.Bridges;
+using BombermanGame.Commands;
 
 namespace BombermanGame.Services;
 
@@ -22,4 +23,11 @@ public interface IGameService
     void SetRoomGameMode(string roomId, string gameMode);
     string GetRoomGameMode(string roomId);
     string GetRoomGameModeDescription(string roomId);
+
+    public void AddPreviousMoveCommand(string playerId, MovePlayerCommand command);
+    public void AddPreviousBombCommand(string playerId, PlaceBombCommand command);
+    public MovePlayerCommand? GetPreviousMoveCommand(string playerId);
+    public PlaceBombCommand? GetPreviousBombCommand(string playerId);
+    public void RemovePreviousMoveCommand(string playerId);
+    public void RemovePreviousBombCommand(string playerId);
 }
