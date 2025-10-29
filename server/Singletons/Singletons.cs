@@ -1,29 +1,11 @@
-using BombermanGame.Models;
 using System.Collections.Concurrent;
 
 namespace BombermanGame.Singletons;
 
 public sealed class GameConfiguration
 {
-    private static GameConfiguration? _instance;
-    private static readonly object _lock = new object();
-
-    public static GameConfiguration Instance
-    {
-        get
-        {
-            if (_instance == null)
-            {
-                lock (_lock)
-                {
-                    if (_instance == null)
-                        _instance = new GameConfiguration();
-                }
-            }
-            return _instance;
-        }
-    }
-
+    private static readonly GameConfiguration _instance = new();
+    public static GameConfiguration Instance => _instance;
     private GameConfiguration() { }
 
     public int MaxPlayersPerRoom { get; private set; } = 4;
@@ -109,26 +91,8 @@ public sealed class GameConfiguration
 
 public sealed class GameLogger
 {
-
-    private static GameLogger? _instance;
-    private static readonly object _lock = new();
-
-    public static GameLogger Instance
-    {
-        get
-        {
-            if (_instance == null)
-            {
-                lock (_lock)
-                {
-                    if (_instance == null)
-                        _instance = new GameLogger();
-                }
-            }
-            return _instance;
-        }
-    }
-
+    private static readonly GameLogger _instance = new();
+    public static GameLogger Instance => _instance;
     private GameLogger() { }
 
     private readonly ConcurrentQueue<LogEntry> _logQueue = new();
