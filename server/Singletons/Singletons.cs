@@ -8,7 +8,6 @@ public sealed class GameConfiguration
     public static GameConfiguration Instance => _instance;
     private GameConfiguration() { }
 
-    // Lock object for synchronization of updates
     private readonly object _configLock = new();
 
     public int MaxPlayersPerRoom { get; private set; } = 4;
@@ -94,7 +93,6 @@ public sealed class GameConfiguration
         if (playerIndex < 0 || playerIndex >= _playerColors.Length)
             return "#ffffff";
 
-        // Read-only — no need to lock here
         return _playerColors[playerIndex];
     }
 
@@ -103,7 +101,6 @@ public sealed class GameConfiguration
         if (playerIndex < 0 || playerIndex >= _spawnPositions.Length)
             return (1, 1);
 
-        // Read-only — no need to lock here
         return _spawnPositions[playerIndex];
     }
 }
@@ -150,7 +147,6 @@ public sealed class GameLogger
             Message = message
         };
 
-        // Writer lock to ensure thread-safe modification of the queue
         _logLock.EnterWriteLock();
         try
         {

@@ -2,59 +2,63 @@ using BombermanGame.Hubs;
 using BombermanGame.Singletons;
 using Microsoft.AspNetCore.SignalR;
 
-namespace BombermanGame.Events
+namespace BombermanGame.Events;
+
+public class GameEventLoggerObserver : IObserver
 {
+    private readonly GameLogger _logger;
 
-    public class GameEventLoggerObserver : IGameObserver
+    public GameEventLoggerObserver(GameLogger logger)
     {
-        private readonly GameLogger _logger;
+        _logger = logger;
+    }
 
-        public GameEventLoggerObserver(GameLogger logger)
+    public void Update(ISubject subject)
+    {
+        if (subject is GameEventSubject eventSubject && eventSubject.LastEvent != null)
         {
-            _logger = logger;
-        }
+            var gameEvent = eventSubject.LastEvent;
 
-        public void OnGameEvent(IGameEvent gameEvent)
-        {
             switch (gameEvent)
             {
                 case PlayerJoinedEvent pje:
-                    _logger.LogInfo("Room", $"Player {pje.Player.Name} joined room {pje.RoomId}");
-                    Console.WriteLine($"Player {pje.Player.Name} joined room {pje.RoomId}");
+                    _logger.LogInfo("Observer", $"[LOGGER] Player {pje.Player.Name} joined room {pje.RoomId}");
                     break;
 
                 case PlayerMovedEvent pme:
-                    _logger.LogDebug("Player", $"Player {pme.Player.Name} moved to ({pme.Player.X}, {pme.Player.Y})");
+                    _logger.LogDebug("Observer", $"[LOGGER] Player {pme.Player.Name} moved to ({pme.Player.X}, {pme.Player.Y})");
                     break;
 
                 case GameStartedEvent gse:
-                    _logger.LogInfo("Game", $"Game started in room {gse.RoomId}");
-                    Console.WriteLine($"Game started in room {gse.RoomId}");
+                    _logger.LogInfo("Observer", $"[LOGGER] Game started in room {gse.RoomId}");
                     break;
 
                 case BombPlacedEvent bpe:
-                    _logger.LogDebug("Bomb", $"Bomb placed at ({bpe.Bomb.X}, {bpe.Bomb.Y}) by player {bpe.Bomb.PlayerId}");
+                    _logger.LogDebug("Observer", $"[LOGGER] Bomb placed at ({bpe.Bomb.X}, {bpe.Bomb.Y})");
                     break;
 
                 case BombExplodedEvent bee:
-                    _logger.LogInfo("Explosion", $"Bomb exploded in room {bee.RoomId} creating {bee.Explosions.Count} explosions");
-                    Console.WriteLine($"Bomb exploded in room {bee.RoomId} creating {bee.Explosions.Count} explosions");
+                    _logger.LogInfo("Observer", $"[LOGGER] Bomb exploded creating {bee.Explosions.Count} explosions");
                     break;
             }
         }
     }
+}
 
-    public class SignalRNotificationObserver : IGameObserver
+public class SignalRNotificationObserver : IObserver
+{
+    private readonly IHubContext<GameHub> _hubContext;
+
+    public SignalRNotificationObserver(IHubContext<GameHub> hubContext)
     {
-        private readonly IHubContext<GameHub> _hubContext;
+        _hubContext = hubContext;
+    }
 
-        public SignalRNotificationObserver(IHubContext<GameHub> hubContext)
+    public void Update(ISubject subject)
+    {
+        if (subject is GameEventSubject eventSubject && eventSubject.LastEvent != null)
         {
-            _hubContext = hubContext;
-        }
-
-        public void OnGameEvent(IGameEvent gameEvent)
-        {
+            var gameEvent = eventSubject.LastEvent;
             var roomId = gameEvent.RoomId;
 
             switch (gameEvent)
@@ -109,4 +113,3 @@ namespace BombermanGame.Events
         }
     }
 }
-

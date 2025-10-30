@@ -5,7 +5,6 @@ using BombermanGame.Hubs;
 using BombermanGame.Services;
 using BombermanGame.Builders;
 using BombermanGame.Prototypes;
-using BombermanGame.Adapters;
 using BombermanGame.Bridges;
 using BombermanGame.Decorators;
 using BombermanGame.Singletons;
@@ -42,9 +41,6 @@ builder.Services.AddTransient<IPlayerBuilder, PlayerBuilder>();
 builder.Services.AddTransient<IGameRoomBuilder, GameRoomBuilder>();
 
 builder.Services.AddSingleton<PrototypeManager>();
-
-builder.Services.AddSingleton<IGameRoomRepository, InMemoryGameRoomRepository>();
-builder.Services.AddSingleton<IGameDataService, GameRoomAdapter>();
 
 builder.Services.AddSingleton<IGameRenderer, JsonGameRenderer>();
 

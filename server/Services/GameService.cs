@@ -8,11 +8,10 @@ using BombermanGame.Decorators;
 using BombermanGame.Prototypes;
 using BombermanGame.Singletons;
 using BombermanGame.Strategies;
-using BombermanGame.Adapters;
 using BombermanGame.Bridges;
 using BombermanGame.Builders;
-using BombermanGame.PowerUps;
 using BombermanGame.Commands;
+using BombermanGame.Adapters;
 
 namespace BombermanGame.Services;
 
@@ -24,10 +23,10 @@ public class GameService : IGameService
     private readonly Dictionary<string, PlayerDecoratorManager> _roomDecorators = new();
     private readonly Dictionary<string, IGameRenderer> _roomRenderers = new();
     private readonly Dictionary<string, IGameModeFactory> _roomModeFactories = new();
+    private readonly Dictionary<string, IModernPowerUpProcessor> _roomPowerUpProcessors = new();
     private readonly Timer _gameTimer;
     private readonly IHubContext<GameHub> _hubContext;
     private readonly PrototypeManager _prototypeManager;
-    private readonly IGameDataService _gameDataService;
     private readonly IPlayerBuilder _playerBuilder;
     private readonly IGameRoomBuilder _gameRoomBuilder;
     private readonly GameEventSubject _gameEventSubject;
@@ -40,13 +39,11 @@ public class GameService : IGameService
     public GameService(
         IHubContext<GameHub> hubContext,
         PrototypeManager prototypeManager,
-        IGameDataService gameDataService,
         IPlayerBuilder playerBuilder,
         IGameRoomBuilder gameRoomBuilder)
     {
         _hubContext = hubContext;
         _prototypeManager = prototypeManager;
-        _gameDataService = gameDataService;
         _playerBuilder = playerBuilder;
         _gameRoomBuilder = gameRoomBuilder;
 
@@ -57,7 +54,7 @@ public class GameService : IGameService
         _gameEventSubject.Attach(_loggerObserver);
         _gameEventSubject.Attach(_notificationObserver);
 
-        _logger.LogInfo("Observer", "All observers attached successfully");
+        _logger.LogInfo("Observer", "Observers attached to subject");
 
         _gameTimer = new Timer(
             UpdateGames,
@@ -119,6 +116,19 @@ public class GameService : IGameService
     {
         var modeFactory = CreateGameModeFactory(gameMode);
         _roomModeFactories[roomId] = modeFactory;
+
+        var useLegacySystem = gameMode.ToLower() == "chaos";
+        if (useLegacySystem)
+        {
+            var legacySystem = new ChaosPowerUpSystem();
+            _roomPowerUpProcessors[roomId] = new PowerUpAdapter(legacySystem);
+            _logger.LogInfo("Adapter", $"Room {roomId} using PowerUpAdapter with LegacySystem");
+        }
+        else
+        {
+            _roomPowerUpProcessors[roomId] = new DirectPowerUpProcessor();
+            _logger.LogInfo("Adapter", $"Room {roomId} using DirectPowerUpProcessor");
+        }
 
         var room = _gameRoomBuilder
             .WithId(roomId)
@@ -230,13 +240,11 @@ public class GameService : IGameService
         room.Players.Add(newPlayer);
         _roomDecorators[roomId].RegisterPlayer(newPlayer);
 
-        _gameEventSubject.Notify(new PlayerJoinedEvent
+        _gameEventSubject.NotifyEvent(new PlayerJoinedEvent
         {
             RoomId = roomId,
             Player = newPlayer
         });
-
-        await SaveRoomDataAsync(roomId, room);
 
         var currentGameMode = GetRoomGameMode(roomId);
         _logger.LogInfo("Room", $"Player {newPlayer.Name} ({prototypeKey} role) joined room {roomId} ({currentGameMode} mode)");
@@ -257,12 +265,10 @@ public class GameService : IGameService
 
             room.UpdateStateHandler();
 
-            _gameEventSubject.Notify(new GameStartedEvent
+            _gameEventSubject.NotifyEvent(new GameStartedEvent
             {
                 RoomId = roomId
             });
-
-            await SaveRoomDataAsync(roomId, room);
 
             var modeName = GetRoomGameMode(roomId);
             var modeDescription = GetRoomGameModeDescription(roomId);
@@ -311,13 +317,11 @@ public class GameService : IGameService
             room.Board.PowerUps.Remove(powerUp);
         }
 
-        _gameEventSubject.Notify(new PlayerMovedEvent
+        _gameEventSubject.NotifyEvent(new PlayerMovedEvent
         {
             RoomId = roomId,
             Player = player
         });
-
-        await SaveRoomDataAsync(roomId, room);
 
         return true;
     }
@@ -356,8 +360,13 @@ public class GameService : IGameService
 
     private void ApplyPowerUpToPlayer(string roomId, string playerId, Player player, PowerUp powerUp)
     {
-        var powerUpEffect = PowerUpEffectFactory.CreateEffect(powerUp.Type);
-        powerUpEffect.ApplyEffect(player);
+        if (_roomPowerUpProcessors.TryGetValue(roomId, out var processor))
+        {
+            var processorInfo = processor.GetProcessorInfo();
+            _logger.LogInfo("Adapter", $"Using {processorInfo} for power-up {powerUp.Type}");
+
+            processor.ProcessPowerUp(player, powerUp.Type);
+        }
 
         if (_roomDecorators.TryGetValue(roomId, out var decoratorManager))
         {
@@ -443,7 +452,7 @@ public class GameService : IGameService
         var bomb = bombFactory.CreateAndConfigureBomb(player.X, player.Y, playerId, effectiveBombRange);
         room.Board.Bombs.Add(bomb);
 
-        _gameEventSubject.Notify(new BombPlacedEvent
+        _gameEventSubject.NotifyEvent(new BombPlacedEvent
         {
             RoomId = roomId,
             Bomb = bomb
@@ -459,8 +468,6 @@ public class GameService : IGameService
             var bombElement = new BombElement(bomb, renderer);
             _logger.LogDebug("Bomb", $"Bomb placed: {bombElement.Render()}");
         }
-
-        await SaveRoomDataAsync(roomId, room);
 
         return true;
     }
@@ -484,7 +491,7 @@ public class GameService : IGameService
                 var explosions = await ExplodeBombAsync(room, bomb);
                 room.Board.Bombs.Remove(bomb);
 
-                _gameEventSubject.Notify(new BombExplodedEvent
+                _gameEventSubject.NotifyEvent(new BombExplodedEvent
                 {
                     RoomId = room.Id,
                     Bomb = bomb,
@@ -527,7 +534,6 @@ public class GameService : IGameService
             if (updated)
             {
                 room.LastUpdate = now;
-                await SaveRoomDataAsync(room.Id, room);
                 await _hubContext.Clients.Group(room.Id).SendAsync("GameUpdated", room);
             }
         }
@@ -589,33 +595,6 @@ public class GameService : IGameService
 
         room.Board.Explosions.AddRange(explosions);
         return explosions;
-    }
-
-    private async Task SaveRoomDataAsync(string roomId, GameRoom room)
-    {
-        try
-        {
-            var roomData = new GameRoomData
-            {
-                RoomId = room.Id,
-                State = room.State.ToString(),
-                LastUpdate = room.LastUpdate,
-                Players = room.Players.Select(p => new PlayerData
-                {
-                    Id = p.Id,
-                    Name = p.Name,
-                    X = p.X,
-                    Y = p.Y,
-                    IsAlive = p.IsAlive
-                }).ToList()
-            };
-
-            await _gameDataService.SaveGameDataAsync(roomId, roomData);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError("Adapter", $"Failed to save room data: {ex.Message}");
-        }
     }
 
     public List<GameRoom> GetRooms()

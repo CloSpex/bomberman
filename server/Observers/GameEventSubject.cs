@@ -1,53 +1,58 @@
 namespace BombermanGame.Events
 {
 
-    public class GameEventSubject : IGameSubject
+    public class GameEventSubject : ISubject
     {
-        private readonly List<IGameObserver> _observers = new List<IGameObserver>();
-        private readonly object _lock = new object();
+        private readonly List<IObserver> _observers = new();
+        private readonly object _lock = new();
+        private IGameEvent? _lastEvent;
 
-        public void Attach(IGameObserver observer)
+        public IGameEvent? LastEvent => _lastEvent;
+
+        public void Attach(IObserver observer)
         {
             lock (_lock)
             {
                 if (!_observers.Contains(observer))
                 {
                     _observers.Add(observer);
-                    Console.WriteLine($"GameEventSubject: Attached observer {observer.GetType().Name}");
                 }
             }
         }
 
-        public void Detach(IGameObserver observer)
+        public void Detach(IObserver observer)
         {
             lock (_lock)
             {
-                if (_observers.Remove(observer))
-                {
-                    Console.WriteLine($"GameEventSubject: Detached observer {observer.GetType().Name}");
-                }
+                _observers.Remove(observer);
             }
         }
 
-        public void Notify(IGameEvent gameEvent)
+        public void Notify()
         {
-            List<IGameObserver> observersCopy;
+            List<IObserver> observersCopy;
             lock (_lock)
             {
-                observersCopy = new List<IGameObserver>(_observers);
+                observersCopy = new List<IObserver>(_observers);
             }
 
             foreach (var observer in observersCopy)
             {
                 try
                 {
-                    observer.OnGameEvent(gameEvent);
+                    observer.Update(this);
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"GameEventSubject: Error notifying observer - {ex.Message}");
+                    Console.WriteLine($"Error notifying observer: {ex.Message}");
                 }
             }
+        }
+
+        public void NotifyEvent(IGameEvent gameEvent)
+        {
+            _lastEvent = gameEvent;
+            Notify();
         }
     }
 }
