@@ -8,6 +8,9 @@ public sealed class GameConfiguration
     public static GameConfiguration Instance => _instance;
     private GameConfiguration() { }
 
+    // Lock object for synchronization of updates
+    private readonly object _configLock = new();
+
     public int MaxPlayersPerRoom { get; private set; } = 4;
     public int BombExplosionTimeSeconds { get; private set; } = 3;
     public int ExplosionDurationSeconds { get; private set; } = 1;
@@ -32,8 +35,12 @@ public sealed class GameConfiguration
         if (maxPlayers < 2 || maxPlayers > 8)
             throw new ArgumentException("Max players must be between 2 and 8");
 
-        MaxPlayersPerRoom = maxPlayers;
-        Console.WriteLine($" Max players updated to {maxPlayers}");
+        lock (_configLock)
+        {
+            MaxPlayersPerRoom = maxPlayers;
+        }
+
+        GameLogger.Instance.LogInfo("Config", $"Max players updated to {maxPlayers}");
     }
 
     public void UpdateBombExplosionTime(int seconds)
@@ -41,8 +48,12 @@ public sealed class GameConfiguration
         if (seconds < 1 || seconds > 10)
             throw new ArgumentException("Bomb explosion time must be between 1 and 10 seconds");
 
-        BombExplosionTimeSeconds = seconds;
-        Console.WriteLine($" Bomb explosion time updated to {seconds}s");
+        lock (_configLock)
+        {
+            BombExplosionTimeSeconds = seconds;
+        }
+
+        GameLogger.Instance.LogInfo("Config", $"Bomb explosion time updated to {seconds}s");
     }
 
     public void UpdatePowerUpDropChance(double chance)
@@ -50,25 +61,32 @@ public sealed class GameConfiguration
         if (chance < 0 || chance > 1)
             throw new ArgumentException("Drop chance must be between 0 and 1");
 
-        PowerUpDropChance = chance;
-        Console.WriteLine($" Power-up drop chance updated to {chance:P0}");
+        lock (_configLock)
+        {
+            PowerUpDropChance = chance;
+        }
+
+        GameLogger.Instance.LogInfo("Config", $"Power-up drop chance updated to {chance:P0}");
     }
 
     public void ResetToDefaults()
     {
-        MaxPlayersPerRoom = 4;
-        BombExplosionTimeSeconds = 3;
-        ExplosionDurationSeconds = 1;
-        PowerUpDropChance = 0.3;
-        DefaultBombCount = 1;
-        DefaultBombRange = 2;
-        DefaultMovementSpeed = 1;
-        GameUpdateIntervalMs = 100;
-        BoardWidth = 15;
-        BoardHeight = 13;
-        DestructibleWallChance = 0.6;
+        lock (_configLock)
+        {
+            MaxPlayersPerRoom = 4;
+            BombExplosionTimeSeconds = 3;
+            ExplosionDurationSeconds = 1;
+            PowerUpDropChance = 0.3;
+            DefaultBombCount = 1;
+            DefaultBombRange = 2;
+            DefaultMovementSpeed = 1;
+            GameUpdateIntervalMs = 100;
+            BoardWidth = 15;
+            BoardHeight = 13;
+            DestructibleWallChance = 0.6;
+        }
 
-        Console.WriteLine("Configuration reset to defaults");
+        GameLogger.Instance.LogInfo("Config", "Configuration reset to defaults");
     }
 
     public string GetPlayerColor(int playerIndex)
@@ -76,6 +94,7 @@ public sealed class GameConfiguration
         if (playerIndex < 0 || playerIndex >= _playerColors.Length)
             return "#ffffff";
 
+        // Read-only — no need to lock here
         return _playerColors[playerIndex];
     }
 
@@ -84,9 +103,9 @@ public sealed class GameConfiguration
         if (playerIndex < 0 || playerIndex >= _spawnPositions.Length)
             return (1, 1);
 
+        // Read-only — no need to lock here
         return _spawnPositions[playerIndex];
     }
-
 }
 
 public sealed class GameLogger
@@ -97,6 +116,8 @@ public sealed class GameLogger
 
     private readonly ConcurrentQueue<LogEntry> _logQueue = new();
     private readonly int _maxLogEntries = 1000;
+
+    private readonly ReaderWriterLockSlim _logLock = new();
 
     public enum LogLevel
     {
@@ -113,25 +134,11 @@ public sealed class GameLogger
         public string Category { get; set; } = "";
         public string Message { get; set; } = "";
     }
-    public void LogDebug(string category, string message)
-    {
-        Log(LogLevel.Debug, category, message);
-    }
 
-    public void LogInfo(string category, string message)
-    {
-        Log(LogLevel.Info, category, message);
-    }
-
-    public void LogWarning(string category, string message)
-    {
-        Log(LogLevel.Warning, category, message);
-    }
-
-    public void LogError(string category, string message)
-    {
-        Log(LogLevel.Error, category, message);
-    }
+    public void LogDebug(string category, string message) => Log(LogLevel.Debug, category, message);
+    public void LogInfo(string category, string message) => Log(LogLevel.Info, category, message);
+    public void LogWarning(string category, string message) => Log(LogLevel.Warning, category, message);
+    public void LogError(string category, string message) => Log(LogLevel.Error, category, message);
 
     private void Log(LogLevel level, string category, string message)
     {
@@ -143,11 +150,19 @@ public sealed class GameLogger
             Message = message
         };
 
-        _logQueue.Enqueue(entry);
-
-        while (_logQueue.Count > _maxLogEntries)
+        // Writer lock to ensure thread-safe modification of the queue
+        _logLock.EnterWriteLock();
+        try
         {
-            _logQueue.TryDequeue(out _);
+            _logQueue.Enqueue(entry);
+            while (_logQueue.Count > _maxLogEntries)
+            {
+                _logQueue.TryDequeue(out _);
+            }
+        }
+        finally
+        {
+            _logLock.ExitWriteLock();
         }
 
         var color = level switch
@@ -166,15 +181,32 @@ public sealed class GameLogger
 
     public List<string> GetRecentLogs(int count = 10)
     {
-        return _logQueue
-            .TakeLast(count)
-            .Select(e => $"[{e.Timestamp:HH:mm:ss}] [{e.Level}] [{e.Category}] {e.Message}")
-            .ToList();
+        _logLock.EnterReadLock();
+        try
+        {
+            return _logQueue
+                .TakeLast(count)
+                .Select(e => $"[{e.Timestamp:HH:mm:ss}] [{e.Level}] [{e.Category}] {e.Message}")
+                .ToList();
+        }
+        finally
+        {
+            _logLock.ExitReadLock();
+        }
     }
 
     public void ClearLogs()
     {
-        _logQueue.Clear();
+        _logLock.EnterWriteLock();
+        try
+        {
+            _logQueue.Clear();
+        }
+        finally
+        {
+            _logLock.ExitWriteLock();
+        }
+
         Console.WriteLine("Logs cleared");
     }
 }
